@@ -15,6 +15,7 @@ connection_status_t conn_stat = IDLE_CONNECTION;
 output_control_t out_status = {0};
 input_read_t in_status = {0};
 bool output_set_flag = 0;
+bool read_ins_flag = 0;
 
 void repeat_every(repeat_timer_t *timer,
                   uint32_t interval_ms,
@@ -48,8 +49,9 @@ void core1_entry() {
     while (1){
         counter++;
         if(output_set_flag == true) update_outputs();
+        if(read_ins_flag == true) read_input_channels(&in_status);
         tight_loop_contents();
-        // sleep_ms(1000);
+        // sleep_ms(100);
     }  
 }
 

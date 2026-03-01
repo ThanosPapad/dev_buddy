@@ -115,7 +115,7 @@ void serial_init(void) {
 void handle_uart_rcv(void) {
 
     handshake_packet_t pack = {0};
-
+    // Perform initial handshake
     if (conn_stat == COM_FULL_CONFIRMCON) {
         memcpy(&pack, rx_line, sizeof(handshake_packet_t));
         if (pack.handshake_value == 111 && pack.device_number == 99) {
@@ -133,12 +133,29 @@ void handle_uart_rcv(void) {
             conn_stat = IDLE_CONNECTION;
         }
     }
-
+    // Normal communication 
     if (conn_stat == COM_FULL) {
         memcpy(&pack, rx_line, sizeof(handshake_packet_t));
         switch (pack.handshake_value){
-            case 21:
+            case SET_DEVICE_OUTPUTS:
                 memcpy(&out_status, pack.data, sizeof(output_control_t));
+                break;
+            case GET_DEVICE_OUTPUTS_REQ:
+                read_ins_flag = true;
+                absolute_time_t timeout = make_timeout_time_ms(50);
+                while (read_ins_flag && !time_reached(timeout))
+                {
+                    tight_loop_contents();
+                }
+                read_ins_flag = false; // In case of timeout make sure that the flag is reset
+                // Create response packet
+                pico_unique_board_id_t id;
+                pico_get_unique_board_id(&id);
+                memcpy(pack.chip_id, id.id, 8);
+                pack.handshake_value = GET_DEVICE_OUTPUTS_RESP;
+                memcpy(pack.data, &in_status, sizeof(input_read_t));
+                uart_dma_write((uint8_t*)&pack, sizeof(pack));
+                uart_dma_write((uint8_t*)"\n", 1);
                 break;
         }
 

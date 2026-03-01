@@ -48,6 +48,7 @@ typedef struct __attribute__((packed))
 
 extern output_control_t out_status;
 extern bool output_set_flag;
+extern bool read_ins_flag;
 
 extern input_read_t in_status;
 
@@ -67,17 +68,17 @@ typedef enum {
 } channel_pins_t;
 
 typedef enum {
-    CHANNEL_ΙΝ_0 = 14,
-    CHANNEL_ΙΝ_1 = 18,
-    CHANNEL_ΙΝ_2 = 16,
-    CHANNEL_ΙΝ_3,
-    CHANNEL_ΙΝ_4,
-    CHANNEL_ΙΝ_5,
-    CHANNEL_ΙΝ_6,
-    CHANNEL_ΙΝ_7,
-    CHANNEL_ΙΝ_8,
-    CHANNEL_ΙΝ_9,
-    CHANNEL_ΙΝ_10
+    CHANNEL_READ_0 = 14,
+    CHANNEL_READ_1 = 18,
+    CHANNEL_READ_2 = 16,
+    CHANNEL_READ_3,
+    CHANNEL_READ_4,
+    CHANNEL_READ_5,
+    CHANNEL_READ_6,
+    CHANNEL_READ_7,
+    CHANNEL_READ_8,
+    CHANNEL_READ_9,
+    CHANNEL_READ_10
 } in_channel_pins_t;
 
 void toggle_led();
@@ -86,5 +87,6 @@ void pico_set_led(bool led_on);
 void update_outputs();
 void init_outputs();
 void init_inputs();
+void read_input_channels (input_read_t *packet);
 
 #endif

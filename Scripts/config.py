@@ -3,6 +3,8 @@
 # Handshake packet configuration
 HANDSHAKE_VALUE = 111  # 0x6F in decimal
 SET_HANDSHAKE_VALUE = 21  # 0x15 in decimal for set operations
+INPUTS_HANDSHAKE_VALUE = 22  # 0x16 in decimal for inputs operations
+INPUTS_RESPONSE_HANDSHAKE_VALUE = 23  # 0x17 in decimal for inputs response
 DEVICE_NUMBER = 99     # 0x63 in decimal
 PAYLOAD_LENGTH = 112   # 0x70 in decimal (updated from 12 to 112)
 RESPONSE_HANDSHAKE_VALUE = 112  # Expected response value (0x70)
@@ -23,3 +25,6 @@ HANDSHAKE_PACKET_SIZE = CHIP_ID_SIZE + 1 + 1 + 100 + 2  # 112 bytes total (updat
 # GUI settings
 WINDOW_WIDTH = 600
 WINDOW_HEIGHT = 200
+
+# Input status update settings
+INPUT_UPDATE_INTERVAL = 2  # seconds between automatic input status updates

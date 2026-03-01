@@ -23,6 +23,15 @@
 #define RX_BUF_SIZE         256
 #define RX_BUF_MASK         (RX_BUF_SIZE - 1)
 
+typedef enum
+{
+    SET_DEVICE_OUTPUTS = 21,
+    GET_DEVICE_OUTPUTS_REQ = 22,
+    GET_DEVICE_OUTPUTS_RESP = 23,
+    INCOMING_HANDSHKE_REQ = 111,
+    OUTGOING_HANDSHAKE_REQ = 112
+
+} packet_type_t;
 
 typedef enum
 {

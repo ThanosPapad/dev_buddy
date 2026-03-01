@@ -41,6 +41,7 @@ void update_outputs()
     gpio_put((uint)CHANNEL_OUT_9, out_status.channel_9_out);
     gpio_put((uint)CHANNEL_OUT_10, out_status.channel_10_out);
 #endif
+output_set_flag = false;
 }
 
 void init_outputs(){
@@ -71,27 +72,67 @@ void init_outputs(){
 }
 void init_inputs(){
 #ifdef OUTPUTS_READY   
-    gpio_init((uint)CHANNEL_IN_0);
-    gpio_set_dir((uint)CHANNEL_IN_0, GPIO_IN);
-    gpio_init((uint)CHANNEL_IN_1);
-    gpio_set_dir((uint)CHANNEL_IN_1, GPIO_IN);
-    gpio_init((uint)CHANNEL_IN_2);
-    gpio_set_dir((uint)CHANNEL_IN_2, GPIO_IN);
-    gpio_init((uint)CHANNEL_IN_3);
-    gpio_set_dir((uint)CHANNEL_IN_3, GPIO_IN);
-    gpio_init((uint)CHANNEL_IN_4);
-    gpio_set_dir((uint)CHANNEL_IN_4, GPIO_IN);
-    gpio_init((uint)CHANNEL_IN_5);
-    gpio_set_dir((uint)CHANNEL_IN_5, GPIO_IN);
-    gpio_init((uint)CHANNEL_IN_6);
-    gpio_set_dir((uint)CHANNEL_IN_6, GPIO_IN);
-    gpio_init((uint)CHANNEL_IN_7);
-    gpio_set_dir((uint)CHANNEL_IN_7, GPIO_IN);
-    gpio_init((uint)CHANNEL_IN_8);
-    gpio_set_dir((uint)CHANNEL_IN_8, GPIO_IN);
-    gpio_init((uint)CHANNEL_IN_9);
-    gpio_set_dir((uint)CHANNEL_IN_9, GPIO_IN);
-    gpio_init((uint)CHANNEL_IN_10);
-    gpio_set_dir((uint)CHANNEL_IN_10, GPIO_IN);
+    gpio_init((uint)CHANNEL_READ_0);
+    gpio_set_dir((uint)CHANNEL_READ_0, GPIO_IN);
+    gpio_pull_down((uint)CHANNEL_READ_0);
+    gpio_init((uint)CHANNEL_READ_1);
+    gpio_set_dir((uint)CHANNEL_READ_1, GPIO_IN);
+    gpio_pull_down((uint)CHANNEL_READ_1);
+    gpio_init((uint)CHANNEL_READ_2);
+    gpio_set_dir((uint)CHANNEL_READ_2, GPIO_IN);
+    gpio_pull_down((uint)CHANNEL_READ_2);
+    gpio_init((uint)CHANNEL_READ_3);
+    gpio_set_dir((uint)CHANNEL_READ_3, GPIO_IN);
+    gpio_pull_down((uint)CHANNEL_READ_3);
+    gpio_init((uint)CHANNEL_READ_4);
+    gpio_set_dir((uint)CHANNEL_READ_4, GPIO_IN);
+    gpio_pull_down((uint)CHANNEL_READ_4);
+    gpio_init((uint)CHANNEL_READ_5);
+    gpio_set_dir((uint)CHANNEL_READ_5, GPIO_IN);
+    gpio_pull_down((uint)CHANNEL_READ_5);
+    gpio_init((uint)CHANNEL_READ_6);
+    gpio_set_dir((uint)CHANNEL_READ_6, GPIO_IN);
+    gpio_pull_down((uint)CHANNEL_READ_6);
+    gpio_init((uint)CHANNEL_READ_7);
+    gpio_set_dir((uint)CHANNEL_READ_7, GPIO_IN);
+    gpio_pull_down((uint)CHANNEL_READ_7);
+    gpio_init((uint)CHANNEL_READ_8);
+    gpio_set_dir((uint)CHANNEL_READ_8, GPIO_IN);
+    gpio_pull_down((uint)CHANNEL_READ_8);
+    gpio_init((uint)CHANNEL_READ_9);
+    gpio_set_dir((uint)CHANNEL_READ_9, GPIO_IN);
+    gpio_pull_down((uint)CHANNEL_READ_9);
+    gpio_init((uint)CHANNEL_READ_10);
+    gpio_set_dir((uint)CHANNEL_READ_10, GPIO_IN);
+    gpio_pull_down((uint)CHANNEL_READ_10);
 #endif
+}
+
+void read_input_channels (input_read_t *packet){
+#ifdef OUTPUTS_READY
+    packet->channel_0_in = gpio_get((uint)CHANNEL_READ_0);
+    packet->channel_0_in = gpio_get((uint)CHANNEL_READ_1);
+    packet->channel_0_in = gpio_get((uint)CHANNEL_READ_2);
+    packet->channel_0_in = gpio_get((uint)CHANNEL_READ_3);
+    packet->channel_0_in = gpio_get((uint)CHANNEL_READ_4);
+    packet->channel_0_in = gpio_get((uint)CHANNEL_READ_5);
+    packet->channel_0_in = gpio_get((uint)CHANNEL_READ_6);
+    packet->channel_0_in = gpio_get((uint)CHANNEL_READ_7);
+    packet->channel_0_in = gpio_get((uint)CHANNEL_READ_8);
+    packet->channel_0_in = gpio_get((uint)CHANNEL_READ_9);
+    packet->channel_0_in = gpio_get((uint)CHANNEL_READ_10);
+#else
+    packet->channel_0_in = 1;
+    packet->channel_1_in = 0;
+    packet->channel_2_in = 1;
+    packet->channel_3_in = 0;
+    packet->channel_4_in = 1;
+    packet->channel_5_in = 0;
+    packet->channel_6_in = 1;
+    packet->channel_7_in = 0;
+    packet->channel_8_in = 1;
+    packet->channel_9_in = 0;
+    packet->channel_10_in = 1;
+#endif
+read_ins_flag = false;
 }
