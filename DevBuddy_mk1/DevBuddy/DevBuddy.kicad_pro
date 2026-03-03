@@ -412,6 +412,14 @@
     [
       "cd44a09a-8e2e-49d9-bb56-7efc0bfafbd6",
       "Root"
+    ],
+    [
+      "8c3ae9d2-9657-4c3f-8bd5-219812754777",
+      "Power_Supply_1"
+    ],
+    [
+      "e371b76d-b707-425d-882b-33cb3d3ee657",
+      "ADC_Channels"
     ]
   ],
   "text_variables": {}

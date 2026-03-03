@@ -2407,6 +2407,16 @@
 	)
 	(wire
 		(pts
+			(xy 144.78 71.12) (xy 148.59 71.12)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5229b9b2-5044-4eec-81be-d773ab6d91be")
+	)
+	(wire
+		(pts
 			(xy 88.9 45.72) (xy 88.9 44.45)
 		)
 		(stroke
@@ -2424,6 +2434,26 @@
 			(type default)
 		)
 		(uuid "ade76fb6-e8fa-437c-a6cd-40664733bfa9")
+	)
+	(wire
+		(pts
+			(xy 144.78 76.2) (xy 148.59 76.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "af24f336-5a97-4c90-b451-2a8b676aea1e")
+	)
+	(wire
+		(pts
+			(xy 144.78 81.28) (xy 148.59 81.28)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "bcfe1de1-65de-4d3d-8497-761794539f63")
 	)
 	(wire
 		(pts
@@ -2467,6 +2497,26 @@
 	)
 	(wire
 		(pts
+			(xy 144.78 78.74) (xy 148.59 78.74)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "df770f9a-dea2-46be-9a3a-d5c49fb0f3b3")
+	)
+	(wire
+		(pts
+			(xy 144.78 73.66) (xy 148.59 73.66)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e64c792d-7571-44ba-8f62-355901441978")
+	)
+	(wire
+		(pts
 			(xy 76.2 44.45) (xy 60.96 44.45)
 		)
 		(stroke
@@ -2484,6 +2534,92 @@
 			(type default)
 		)
 		(uuid "ee2f0332-3c62-45cd-a51a-7589e434f082")
+	)
+	(label "UART_RX_MCU"
+		(at 148.59 73.66 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "1ec360dc-7308-4c88-b327-339df6f5c9cb")
+	)
+	(label "UART_TX_MCU"
+		(at 148.59 71.12 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "dfa6b937-0f3f-47da-b2a3-0a5f99180f0e")
+	)
+	(global_label "MUX_S1"
+		(shape input)
+		(at 148.59 78.74 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "12c230ed-0859-4384-86d4-5db4f4026f14")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 158.9532 78.74 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "MUX_S2"
+		(shape input)
+		(at 148.59 81.28 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "a1169729-ceae-4398-b413-47e92d720010")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 158.9532 81.28 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "MUX_S0"
+		(shape input)
+		(at 148.59 76.2 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "fe91ffbf-86b0-477d-bc41-324a2d5629c3")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 158.9532 76.2 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
 	)
 	(symbol
 		(lib_id "Device:L")
@@ -3414,6 +3550,90 @@
 				(path "/cd44a09a-8e2e-49d9-bb56-7efc0bfafbd6"
 					(reference "C1")
 					(unit 1)
+				)
+			)
+		)
+	)
+	(sheet
+		(at 185.42 41.91)
+		(size 57.15 22.86)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "8c3ae9d2-9657-4c3f-8bd5-219812754777")
+		(property "Sheetname" "Power_Supply_1"
+			(at 185.42 41.1984 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "Power_Supply_1.kicad_sch"
+			(at 185.42 65.3546 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "DevBuddy"
+				(path "/cd44a09a-8e2e-49d9-bb56-7efc0bfafbd6"
+					(page "2")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 248.92 41.91)
+		(size 58.42 21.59)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "e371b76d-b707-425d-882b-33cb3d3ee657")
+		(property "Sheetname" "ADC_Channels"
+			(at 248.92 41.1984 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "ADC_Channels.kicad_sch"
+			(at 248.92 64.0846 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "DevBuddy"
+				(path "/cd44a09a-8e2e-49d9-bb56-7efc0bfafbd6"
+					(page "3")
 				)
 			)
 		)
