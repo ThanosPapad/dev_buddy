@@ -19,13 +19,4 @@
 
 //------ DEFINES END--------
 
-
-typedef struct
-{
-    uint32_t interval_ms;
-    absolute_time_t next_time;
-    void (*callback)(void);
-    bool initialized;
-} repeat_timer_t;
-
 #endif /* MODULE_H */

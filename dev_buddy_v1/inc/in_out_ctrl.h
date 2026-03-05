@@ -14,6 +14,8 @@
 #include "pico/stdlib.h"
 #include "globals.h"
 
+
+// Digital output channels state
 typedef struct __attribute__((packed))
 {
     uint8_t channel_0_out;
@@ -30,6 +32,7 @@ typedef struct __attribute__((packed))
 
 } output_control_t;
 
+// Digital input channels state
 typedef struct __attribute__((packed))
 {
     uint8_t channel_0_in;
@@ -46,17 +49,34 @@ typedef struct __attribute__((packed))
 
 } input_read_t;
 
-extern output_control_t out_status;
-extern bool output_set_flag;
-extern bool read_ins_flag;
+// ADC measurements struct
+typedef struct __attribute__((packed))
+{
+    float voltage_meas;
+    float current_meas;
 
-extern input_read_t in_status;
+} channel_adc_meas_t;
+
+// Voltage measurements for all channels
+typedef struct __attribute__((packed))
+{
+    channel_adc_meas_t ch_adc_meas_0;
+    channel_adc_meas_t ch_adc_meas_1;
+    channel_adc_meas_t ch_adc_meas_2;
+    channel_adc_meas_t ch_adc_meas_3;
+    channel_adc_meas_t ch_adc_meas_4;
+    channel_adc_meas_t ch_adc_meas_5;
+    channel_adc_meas_t ch_adc_meas_6;
+    channel_adc_meas_t ch_adc_meas_7;
+
+} channel_voltages_t;
 
 //TODO Have to put in here the actual pin numbers
+// Digital Output channel pins
 typedef enum {
-    CHANNEL_OUT_0 = 15,
-    CHANNEL_OUT_1 = 19,
-    CHANNEL_OUT_2 = 17,
+    CHANNEL_OUT_0 = 13,
+    CHANNEL_OUT_1 = 14,
+    CHANNEL_OUT_2 = 15,
     CHANNEL_OUT_3,
     CHANNEL_OUT_4,
     CHANNEL_OUT_5,
@@ -67,6 +87,7 @@ typedef enum {
     CHANNEL_OUT_10
 } channel_pins_t;
 
+// Digital Input channel pins
 typedef enum {
     CHANNEL_READ_0 = 14,
     CHANNEL_READ_1 = 18,
@@ -81,6 +102,19 @@ typedef enum {
     CHANNEL_READ_10
 } in_channel_pins_t;
 
+typedef enum {
+    V_CHANNELS_ADC_PIN = 26,
+    I_CHANNELS_ADC_PIN = 27
+} adc_channel_pins_t;
+
+// Variables used inside main
+extern output_control_t out_status;
+extern input_read_t in_status;
+extern channel_voltages_t adc_meas;
+extern bool output_set_flag;
+extern bool read_ins_flag;
+
+// Function defines
 void toggle_led();
 void pico_led_init(void);
 void pico_set_led(bool led_on);
@@ -88,5 +122,8 @@ void update_outputs();
 void init_outputs();
 void init_inputs();
 void read_input_channels (input_read_t *packet);
+void adc_init_internal ();
+channel_voltages_t read_adc_channels ();
+void read_adc_channels_wrapper(void *ctx);
 
 #endif

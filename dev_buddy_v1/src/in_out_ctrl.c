@@ -1,4 +1,6 @@
 #include "in_out_ctrl.h"
+#include "hardware/adc.h"
+#include "uart_coms.h"
 
 void toggle_led()
 {
@@ -28,6 +30,9 @@ void pico_set_led(bool led_on)
 
 void update_outputs()
 {
+    gpio_put((uint)CHANNEL_OUT_0, out_status.channel_0_out);
+    gpio_put((uint)CHANNEL_OUT_1, out_status.channel_1_out);
+    gpio_put((uint)CHANNEL_OUT_2, out_status.channel_2_out);
 #ifdef OUTPUTS_READY
     gpio_put((uint)CHANNEL_OUT_0, out_status.channel_0_out);
     gpio_put((uint)CHANNEL_OUT_1, out_status.channel_1_out);
@@ -44,7 +49,14 @@ void update_outputs()
 output_set_flag = false;
 }
 
-void init_outputs(){
+void init_outputs()
+{
+    gpio_init((uint)CHANNEL_OUT_0);
+    gpio_set_dir((uint)CHANNEL_OUT_0, GPIO_OUT);
+    gpio_init((uint)CHANNEL_OUT_1);
+    gpio_set_dir((uint)CHANNEL_OUT_1, GPIO_OUT);
+    gpio_init((uint)CHANNEL_OUT_2);
+    gpio_set_dir((uint)CHANNEL_OUT_2, GPIO_OUT);
 #ifdef OUTPUTS_READY   
     gpio_init((uint)CHANNEL_OUT_0);
     gpio_set_dir((uint)CHANNEL_OUT_0, GPIO_OUT);
@@ -70,7 +82,8 @@ void init_outputs(){
     gpio_set_dir((uint)CHANNEL_OUT_10, GPIO_OUT);
 #endif
 }
-void init_inputs(){
+void init_inputs()
+{
 #ifdef OUTPUTS_READY   
     gpio_init((uint)CHANNEL_READ_0);
     gpio_set_dir((uint)CHANNEL_READ_0, GPIO_IN);
@@ -108,7 +121,8 @@ void init_inputs(){
 #endif
 }
 
-void read_input_channels (input_read_t *packet){
+void read_input_channels (input_read_t *packet)
+{
 #ifdef OUTPUTS_READY
     packet->channel_0_in = gpio_get((uint)CHANNEL_READ_0);
     packet->channel_0_in = gpio_get((uint)CHANNEL_READ_1);
@@ -134,5 +148,93 @@ void read_input_channels (input_read_t *packet){
     packet->channel_9_in = 0;
     packet->channel_10_in = 1;
 #endif
-read_ins_flag = false;
+    read_ins_flag = false;
+}
+
+void adc_init_internal ()
+{
+    adc_init();
+    adc_gpio_init(V_CHANNELS_ADC_PIN);
+    adc_gpio_init(I_CHANNELS_ADC_PIN);
+
+}
+
+// Read all the channels
+channel_voltages_t read_adc_channels ()
+{
+    channel_voltages_t res = {0};
+    uint16_t raw = 0;
+    const float conversion_factor = 3.3f / (1 << 12);  // 3.3V / 4096
+    // TODO; Add more measurements for each reading to achieve better accuracy
+    // TODO; Set MUX channel 0
+    adc_select_input(0); // ADC0 - (GPIO26)
+    raw = adc_read();    // (0-4095)
+    res.ch_adc_meas_0.voltage_meas = raw * conversion_factor;
+    adc_select_input(1);
+    raw = adc_read();
+    res.ch_adc_meas_0.current_meas = raw * conversion_factor;
+
+    // TODO; Set MUX channel 1
+    adc_select_input(0); // ADC0 - (GPIO26)
+    raw = adc_read();    // (0-4095)
+    res.ch_adc_meas_1.voltage_meas = raw * conversion_factor;
+    adc_select_input(1);
+    raw = adc_read();
+    res.ch_adc_meas_1.current_meas = raw * conversion_factor;
+
+    // TODO; Set MUX channel 2
+    adc_select_input(0); // ADC0 - (GPIO26)
+    raw = adc_read();    // (0-4095)
+    res.ch_adc_meas_2.voltage_meas = raw * conversion_factor;
+    adc_select_input(1);
+    raw = adc_read();
+    res.ch_adc_meas_2.current_meas = raw * conversion_factor;
+
+    // TODO; Set MUX channel 3
+    adc_select_input(0); // ADC0 - (GPIO26)
+    raw = adc_read();    // (0-4095)
+    res.ch_adc_meas_3.voltage_meas = raw * conversion_factor;
+    adc_select_input(1);
+    raw = adc_read();
+    res.ch_adc_meas_3.current_meas = raw * conversion_factor;
+
+    // TODO; Set MUX channel 4
+    adc_select_input(0); // ADC0 - (GPIO26)
+    raw = adc_read();    // (0-4095)
+    res.ch_adc_meas_4.voltage_meas = raw * conversion_factor;
+    adc_select_input(1);
+    raw = adc_read();
+    res.ch_adc_meas_4.current_meas = raw * conversion_factor;
+
+    // TODO; Set MUX channel 5
+    adc_select_input(0); // ADC0 - (GPIO26)
+    raw = adc_read();    // (0-4095)
+    res.ch_adc_meas_5.voltage_meas = raw * conversion_factor;
+    adc_select_input(1);
+    raw = adc_read();
+    res.ch_adc_meas_5.current_meas = raw * conversion_factor;
+
+    // TODO; Set MUX channel 6
+    adc_select_input(0); // ADC0 - (GPIO26)
+    raw = adc_read();    // (0-4095)
+    res.ch_adc_meas_6.voltage_meas = raw * conversion_factor;
+    adc_select_input(1);
+    raw = adc_read();
+    res.ch_adc_meas_6.current_meas = raw * conversion_factor;
+
+    // TODO; Set MUX channel 7
+    adc_select_input(0); // ADC0 - (GPIO26)
+    raw = adc_read();    // (0-4095)
+    res.ch_adc_meas_7.voltage_meas = raw * conversion_factor;
+    adc_select_input(1);
+    raw = adc_read();
+    res.ch_adc_meas_7.current_meas = raw * conversion_factor;
+
+    return res;
+}
+// Wrapper function in case it's needed for periodic run
+void read_adc_channels_wrapper(void *ctx) 
+{
+    channel_voltages_t *dest = (channel_voltages_t*)ctx;
+    *dest = read_adc_channels();
 }

@@ -1,173 +1,271 @@
 import struct
 from typing import Tuple, Optional, List
-from config import HANDSHAKE_VALUE, SET_HANDSHAKE_VALUE, INPUTS_HANDSHAKE_VALUE, INPUTS_RESPONSE_HANDSHAKE_VALUE, DEVICE_NUMBER, PAYLOAD_LENGTH, RESPONSE_HANDSHAKE_VALUE, CHIP_ID_SIZE
+from config import (HANDSHAKE_VALUE, SET_HANDSHAKE_VALUE,
+                    INPUTS_HANDSHAKE_VALUE, INPUTS_RESPONSE_HANDSHAKE_VALUE,
+                    DEVICE_NUMBER, PAYLOAD_LENGTH, RESPONSE_HANDSHAKE_VALUE,
+                    CHIP_ID_SIZE,
+                    SET_ADC_INTERVAL_REQ, SET_ADC_INTERVAL_RESP,
+                    SET_ADC_INTERVAL_STATE_REQ, SET_ADC_INTERVAL_STATE_RESP,
+                    ADC_TELEMETRY_TRANS, ADC_CHANNEL_COUNT)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Existing packet builders
+# ─────────────────────────────────────────────────────────────────────────────
 
 def create_handshake_packet() -> bytes:
     """
     Create a handshake packet with the specified format.
-    
-    Returns:
-        bytes: Packed handshake packet in little endian format (112 bytes)
-        
-    Packet structure:
-    - First 8 bytes: chip_id (empty)
-    - 9th byte: handshake_value (111)
-    - 10th byte: device_number (99)
-    - Next 100 bytes: data_incoming (filled with zeros)
-    - Final 2 bytes: payload_length (112)
+
+    Packet structure (112 bytes, little-endian):
+      [0:8]   chip_id        – 8 bytes, zeros (host doesn't know its own id)
+      [8]     handshake_value – 111  (INCOMING_HANDSHKE_REQ)
+      [9]     device_number  – 99
+      [10:110] data_incoming  – 100 bytes zeros
+      [110:112] payload_length – 112 (uint16 LE)
     """
-    # Create empty chip ID (8 bytes)
-    chip_id = b'\x00\x00\x00\x00\x00\x00\x00\x00'
-    
-    # Create data_incoming field (100 bytes of zeros)
+    chip_id      = b'\x00' * 8
     data_incoming = b'\x00' * 100
-    
-    # Pack the entire structure in little endian format
-    # Format: <8B B B 100B H (8 bytes + 1 byte + 1 byte + 100 bytes + 2 bytes = 112 bytes)
-    packet = struct.pack('<8B B B 100B H', 
-                        *chip_id, 
-                        HANDSHAKE_VALUE, 
-                        DEVICE_NUMBER, 
-                        *data_incoming, 
-                        PAYLOAD_LENGTH)
-    
+    packet = struct.pack('<8B B B 100B H',
+                         *chip_id,
+                         HANDSHAKE_VALUE,
+                         DEVICE_NUMBER,
+                         *data_incoming,
+                         PAYLOAD_LENGTH)
     return packet
+
 
 def create_set_packet(device_id: bytes, channel_data: List[int]) -> bytes:
     """
-    Create a set packet with the specified format.
-    
-    Args:
-        device_id: 8 bytes representing the device ID from handshake response
-        channel_data: List of channel states (first 11 bytes of data array)
-        
-    Returns:
-        bytes: Packed set packet in little endian format (112 bytes)
-        
-    Packet structure:
-    - First 8 bytes: chip_id (from handshake response)
-    - 9th byte: handshake_value (21 for set operations)
-    - 10th byte: device_number (99)
-    - Next 100 bytes: data array (first 11 bytes from channel_data, rest zeros)
-    - Final 2 bytes: payload_length (112)
+    Create a SET_DEVICE_OUTPUTS packet (handshake_value = 21).
+
+    First 11 bytes of the data field carry output channel states (0 or 1).
     """
-    # Validate device_id length
     if len(device_id) != CHIP_ID_SIZE:
         raise ValueError(f"device_id must be {CHIP_ID_SIZE} bytes long")
-    
-    # Create data array with channel states and zeros
+
     data_array = bytearray(100)
-    
-    # Fill first 11 bytes with channel states
     for i in range(min(11, len(channel_data))):
         data_array[i] = 1 if channel_data[i] else 0
-    
-    # Pack the entire structure in little endian format
-    # Format: <8B B B 100B H (8 bytes + 1 byte + 1 byte + 100 bytes + 2 bytes = 112 bytes)
-    packet = struct.pack('<8B B B 100B H', 
-                        *device_id, 
-                        SET_HANDSHAKE_VALUE, 
-                        DEVICE_NUMBER, 
-                        *data_array, 
-                        PAYLOAD_LENGTH)
-    
+
+    packet = struct.pack('<8B B B 100B H',
+                         *device_id,
+                         SET_HANDSHAKE_VALUE,
+                         DEVICE_NUMBER,
+                         *data_array,
+                         PAYLOAD_LENGTH)
     return packet
+
 
 def create_inputs_packet(device_id: bytes) -> bytes:
     """
-    Create an inputs packet with the specified format.
-    
-    Args:
-        device_id: 8 bytes representing the device ID from handshake response
-        
-    Returns:
-        bytes: Packed inputs packet in little endian format (112 bytes)
-        
-    Packet structure:
-    - First 8 bytes: chip_id (from handshake response)
-    - 9th byte: handshake_value (22 for inputs operations)
-    - 10th byte: device_number (99)
-    - Next 100 bytes: data array (filled with zeros for inputs)
-    - Final 2 bytes: payload_length (112)
+    Create a GET_DEVICE_OUTPUTS_REQ packet (handshake_value = 22).
     """
-    # Validate device_id length
     if len(device_id) != CHIP_ID_SIZE:
         raise ValueError(f"device_id must be {CHIP_ID_SIZE} bytes long")
-    
-    # Create data array filled with zeros for inputs
+
     data_array = b'\x00' * 100
-    
-    # Pack the entire structure in little endian format
-    # Format: <8B B B 100B H (8 bytes + 1 byte + 1 byte + 100 bytes + 2 bytes = 112 bytes)
-    packet = struct.pack('<8B B B 100B H', 
-                        *device_id, 
-                        INPUTS_HANDSHAKE_VALUE, 
-                        DEVICE_NUMBER, 
-                        *data_array, 
-                        PAYLOAD_LENGTH)
-    
+    packet = struct.pack('<8B B B 100B H',
+                         *device_id,
+                         INPUTS_HANDSHAKE_VALUE,
+                         DEVICE_NUMBER,
+                         *data_array,
+                         PAYLOAD_LENGTH)
     return packet
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NEW — ADC interval control packets
+# ─────────────────────────────────────────────────────────────────────────────
+
+def create_set_adc_interval_packet(device_id: bytes, interval_ms: int) -> bytes:
+    """
+    Build a SET_ADC_INTERVAL_REQ packet (handshake_value = 11).
+
+    The firmware expects the new timer period as a uint32_t in the first
+    4 bytes of the data field, little-endian:
+
+        pack.data[0..3] = new_adc_interval (uint32_t LE)
+
+    Args:
+        device_id:   8-byte chip ID from the handshake response.
+        interval_ms: New ADC timer period in milliseconds (uint32).
+
+    Returns:
+        112-byte packet ready to write to the serial port (append \\x0A).
+    """
+    if len(device_id) != CHIP_ID_SIZE:
+        raise ValueError(f"device_id must be {CHIP_ID_SIZE} bytes long")
+
+    data_array = bytearray(100)
+    # Pack interval as uint32 little-endian into bytes 0-3 of the data field.
+    # This matches the firmware decode:
+    #   new_adc_interval = data[0] | (data[1]<<8) | (data[2]<<16) | (data[3]<<24)
+    struct.pack_into('<I', data_array, 0, interval_ms)
+
+    packet = struct.pack('<8B B B 100B H',
+                         *device_id,
+                         SET_ADC_INTERVAL_REQ,
+                         DEVICE_NUMBER,
+                         *data_array,
+                         PAYLOAD_LENGTH)
+    return packet
+
+
+def create_set_adc_interval_state_packet(device_id: bytes, enable: bool) -> bytes:
+    """
+    Build a SET_ADC_INTERVAL_STATE_REQ packet (handshake_value = 13).
+
+    The firmware checks data[0]:
+        1  → timer_enable()
+        0  → timer_disable()
+
+    Args:
+        device_id: 8-byte chip ID from the handshake response.
+        enable:    True to start the ADC timer, False to stop it.
+
+    Returns:
+        112-byte packet ready to write to the serial port (append \\x0A).
+    """
+    if len(device_id) != CHIP_ID_SIZE:
+        raise ValueError(f"device_id must be {CHIP_ID_SIZE} bytes long")
+
+    data_array = bytearray(100)
+    data_array[0] = 1 if enable else 0
+
+    packet = struct.pack('<8B B B 100B H',
+                         *device_id,
+                         SET_ADC_INTERVAL_STATE_REQ,
+                         DEVICE_NUMBER,
+                         *data_array,
+                         PAYLOAD_LENGTH)
+    return packet
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NEW — ADC response / telemetry parsers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def verify_adc_interval_response(response_data: bytes) -> Tuple[bool, Optional[int], Optional[bool]]:
+    """
+    Parse a SET_ADC_INTERVAL_RESP packet (handshake_value = 12).
+
+    The firmware sends back:
+        data[0]    = (uint8_t) success flag  (1 = ok, 0 = fail)
+        data[1..4] = new_adc_interval echoed back as uint32 LE
+
+    Returns:
+        (is_valid, new_interval_ms, success)
+        All None / False on parse failure.
+    """
+    packet_data = _strip_terminator(response_data)
+    if len(packet_data) < 112:
+        return False, None, None
+    if packet_data[8] != SET_ADC_INTERVAL_RESP:
+        return False, None, None
+
+    # data field starts at byte 10
+    success      = packet_data[10] != 0
+    new_interval = struct.unpack_from('<I', packet_data, 11)[0]
+    return True, new_interval, success
+
+
+def verify_adc_state_response(response_data: bytes) -> Tuple[bool, Optional[bool]]:
+    """
+    Parse a SET_ADC_INTERVAL_STATE_RESP packet (handshake_value = 14).
+
+    The firmware just echoes the packet back with the updated handshake_value;
+    we treat reception of a valid packet as confirmation.
+
+    Returns:
+        (is_valid, acknowledged)
+    """
+    packet_data = _strip_terminator(response_data)
+    if len(packet_data) < 112:
+        return False, None
+    if packet_data[8] != SET_ADC_INTERVAL_STATE_RESP:
+        return False, None
+    return True, True
+
+
+def parse_adc_telemetry_packet(response_data: bytes) -> Tuple[bool, Optional[List[Tuple[float, float]]]]:
+    """
+    Parse an ADC_TELEMETRY_TRANS packet (handshake_value = 102).
+
+    The firmware packs a channel_voltages_t into pack.data, which is a
+    sequence of 8 × channel_adc_meas_t structs, each containing two
+    IEEE-754 single-precision floats (voltage_meas, current_meas).
+
+    Layout inside data field (bytes 0..63):
+        [0..3]   ch0 voltage   (float32 LE)
+        [4..7]   ch0 current   (float32 LE)
+        [8..11]  ch1 voltage
+        [12..15] ch1 current
+        ...
+
+    Returns:
+        (is_valid, [(voltage, current), ...])   — list of 8 tuples, or None.
+    """
+    packet_data = _strip_terminator(response_data)
+    if len(packet_data) < 112:
+        return False, None
+    if packet_data[8] != ADC_TELEMETRY_TRANS:
+        return False, None
+
+    # data field starts at byte 10; each channel = 2 × float32 = 8 bytes
+    # 8 channels × 8 bytes = 64 bytes — well within the 100-byte data field
+    channels = []
+    offset = 10  # start of data field in the flat packet
+    for _ in range(ADC_CHANNEL_COUNT):
+        voltage, current = struct.unpack_from('<ff', packet_data, offset)
+        channels.append((voltage, current))
+        offset += 8  # sizeof(channel_adc_meas_t)
+
+    return True, channels
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Existing response verifiers (unchanged)
+# ─────────────────────────────────────────────────────────────────────────────
 
 def verify_response_packet(response_data: bytes) -> Tuple[bool, Optional[bytes]]:
     """
-    Verify a response packet received from the device.
-    
-    Args:
-        response_data: Raw bytes received from the serial port (should be 112 bytes + 0x0A terminator)
-        
-    Returns:
-        Tuple of (is_valid, device_id)
-        - is_valid: True if packet is valid, False otherwise
-        - device_id: The first 8 bytes (chip_id) if valid, None otherwise
+    Verify the initial handshake response (handshake_value 111 → 112).
+
+    Returns (is_valid, device_id_bytes).
     """
-    # Extract the actual packet data (remove terminator if present)
-    if len(response_data) > 0 and response_data[-1] == 0x0A:
-        # Remove the newline terminator
-        packet_data = response_data[:-1]
-    else:
-        packet_data = response_data
-    
-    # Only check the handshake value change (111 → 112)
-    # The 9th byte (index 8) should be 112 (0x70)
+    packet_data = _strip_terminator(response_data)
+    if len(packet_data) < CHIP_ID_SIZE + 1:
+        return False, None
     if packet_data[8] != RESPONSE_HANDSHAKE_VALUE:
         return False, None
-    
-    # Return chip ID regardless of packet size
     return True, packet_data[:CHIP_ID_SIZE]
+
 
 def verify_inputs_response_packet(response_data: bytes) -> Tuple[bool, Optional[List[int]]]:
     """
-    Verify an inputs response packet received from the device.
-    
-    Args:
-        response_data: Raw bytes received from the serial port (should be 112 bytes + 0x0A terminator)
-        
-    Returns:
-        Tuple of (is_valid, channel_states)
-        - is_valid: True if packet is valid, False otherwise
-        - channel_states: List of 11 channel states (0 or 1) if valid, None otherwise
-        - First byte of data = Channel 0, second byte = Channel 1, etc.
+    Verify a GET_DEVICE_OUTPUTS_RESP packet (handshake_value = 23).
+
+    Returns (is_valid, [11 channel states]).
     """
-    # Extract the actual packet data (remove terminator if present)
-    if len(response_data) > 0 and response_data[-1] == 0x0A:
-        # Remove the newline terminator
-        packet_data = response_data[:-1]
-    else:
-        packet_data = response_data
-    
-    # Check if packet has minimum required size
-    if len(packet_data) < 112:  # Expected packet size (8 + 1 + 1 + 100 + 2)
+    packet_data = _strip_terminator(response_data)
+    if len(packet_data) < 112:
         return False, None
-    
-    # Check the handshake value (should be 23 for inputs response)
     if packet_data[8] != INPUTS_RESPONSE_HANDSHAKE_VALUE:
         return False, None
-    
-    # Extract channel states from first 11 bytes of data array
-    # Data array starts at index 10 (after 8 bytes chip_id + 1 byte handshake + 1 byte device_number)
+
     channel_states = []
     for i in range(11):
-        byte_value = packet_data[10 + i]  # Data array starts at index 10
-        channel_states.append(1 if byte_value > 0 else 0)
-    
+        channel_states.append(1 if packet_data[10 + i] > 0 else 0)
     return True, channel_states
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Internal helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _strip_terminator(data: bytes) -> bytes:
+    """Remove trailing 0x0A terminator if present."""
+    if data and data[-1] == 0x0A:
+        return data[:-1]
+    return data

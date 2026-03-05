@@ -5,7 +5,7 @@
 #include "hardware/dma.h"
 #include "hardware/irq.h"
 #include <string.h>
-#include "in_out_ctrl.h"
+#include "timer_handler.h"
 
 static int dma_tx_ch;
 static int dma_rx_ch;
@@ -16,8 +16,12 @@ static volatile uint32_t last_rx_idx = 0;
 static char rx_line[RX_MAX_LEN + 1];
 static uint8_t line_index = 0;
 
+pico_unique_board_id_t id;
+
+handshake_packet_t pack = {0};
 
 void uart_dma_write(const uint8_t *data, size_t len) {
+    // Wait only if a previous transfer is still running
     while (dma_channel_is_busy(dma_tx_ch)) {
         tight_loop_contents();
     }
@@ -26,15 +30,14 @@ void uart_dma_write(const uint8_t *data, size_t len) {
     channel_config_set_transfer_data_size(&c, DMA_SIZE_8);
     channel_config_set_read_increment(&c, true);
     channel_config_set_write_increment(&c, false);
-    channel_config_set_dreq(&c, uart_get_dreq(UART_ID, true)); 
+    channel_config_set_dreq(&c, uart_get_dreq(UART_ID, true));
 
     dma_channel_configure(dma_tx_ch, &c,
-                          &uart_get_hw(UART_ID)->dr,  
-                          data,                        
-                          len,                          
-                          true);                      
-
-    dma_channel_wait_for_finish_blocking(dma_tx_ch);
+        &uart_get_hw(UART_ID)->dr,
+        data,
+        len,
+        true);  // start immediately — CPU is now free
+    
 }
 
 void process_rx_dma(void) {
@@ -114,13 +117,12 @@ void serial_init(void) {
 
 void handle_uart_rcv(void) {
 
-    handshake_packet_t pack = {0};
+    
+    pico_get_unique_board_id(&id);
     // Perform initial handshake
     if (conn_stat == COM_FULL_CONFIRMCON) {
         memcpy(&pack, rx_line, sizeof(handshake_packet_t));
         if (pack.handshake_value == 111 && pack.device_number == 99) {
-            pico_unique_board_id_t id;
-            pico_get_unique_board_id(&id);
             memcpy(pack.chip_id, id.id, 8);
             pack.handshake_value = 112;
             memset(pack.data, 0, sizeof(pack.data));
@@ -139,6 +141,7 @@ void handle_uart_rcv(void) {
         switch (pack.handshake_value){
             case SET_DEVICE_OUTPUTS:
                 memcpy(&out_status, pack.data, sizeof(output_control_t));
+                output_set_flag = true;
                 break;
             case GET_DEVICE_OUTPUTS_REQ:
                 read_ins_flag = true;
@@ -149,11 +152,30 @@ void handle_uart_rcv(void) {
                 }
                 read_ins_flag = false; // In case of timeout make sure that the flag is reset
                 // Create response packet
-                pico_unique_board_id_t id;
-                pico_get_unique_board_id(&id);
+                
                 memcpy(pack.chip_id, id.id, 8);
                 pack.handshake_value = GET_DEVICE_OUTPUTS_RESP;
                 memcpy(pack.data, &in_status, sizeof(input_read_t));
+                uart_dma_write((uint8_t*)&pack, sizeof(pack));
+                uart_dma_write((uint8_t*)"\n", 1);
+                break;
+            case SET_ADC_INTERVAL_REQ:
+                uint32_t new_adc_interval = (uint32_t)pack.data[0] |
+                                            ((uint32_t)pack.data[1] << 8) |
+                                            ((uint32_t)pack.data[2] << 16) |
+                                            ((uint32_t)pack.data[3] << 24);
+                bool res = change_timer_period(&adc_tlm_timer, new_adc_interval);
+                pack.data[0] = (uint8_t)res;
+                memcpy(&pack.data[1], &new_adc_interval, sizeof(new_adc_interval));
+                pack.handshake_value = GET_DEVICE_OUTPUTS_RESP;
+                uart_dma_write((uint8_t*)&pack, sizeof(pack));
+                uart_dma_write((uint8_t*)"\n", 1);
+                break;
+            case SET_ADC_INTERVAL_STATE_REQ:
+                uint8_t adc_state_set = pack.data[0];
+                // if (adc_state_set == 1) timer_enable(&adc_timer);
+                // else if (adc_state_set == 0) timer_disable(&adc_timer);
+                pack.handshake_value = SET_ADC_INTERVAL_STATE_RESP;
                 uart_dma_write((uint8_t*)&pack, sizeof(pack));
                 uart_dma_write((uint8_t*)"\n", 1);
                 break;
@@ -162,4 +184,16 @@ void handle_uart_rcv(void) {
         // uart_dma_write((uint8_t*)rx_line, strlen(rx_line));
         conn_stat = COM_CONNECTED;
     }
+}
+
+void transmit_adc_meas()
+{
+    // handshake_packet_t pack = {0};
+    memcpy(pack.chip_id, id.id, 8);
+    pack.handshake_value = ADC_TELEMETRY_TRANS;
+    pack.device_number = 99;
+    memcpy(pack.data, &adc_meas, sizeof(channel_voltages_t));
+    pack.payload_length = 112;
+    uart_dma_write((uint8_t *)&pack, sizeof(pack));
+    uart_dma_write((uint8_t *)"\n", 1);
 }

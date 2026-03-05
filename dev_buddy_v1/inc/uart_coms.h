@@ -12,6 +12,7 @@
 #include "pico/unique_id.h"
 #include "hardware/uart.h"
 #include "hardware/dma.h"
+#include "in_out_ctrl.h"
 
 #define UART_ID uart0
 #define BAUD_RATE 250000
@@ -25,9 +26,14 @@
 
 typedef enum
 {
+    SET_ADC_INTERVAL_REQ = 11,
+    SET_ADC_INTERVAL_RESP = 12,
+    SET_ADC_INTERVAL_STATE_REQ = 13,
+    SET_ADC_INTERVAL_STATE_RESP = 14,
     SET_DEVICE_OUTPUTS = 21,
     GET_DEVICE_OUTPUTS_REQ = 22,
     GET_DEVICE_OUTPUTS_RESP = 23,
+    ADC_TELEMETRY_TRANS = 102,
     INCOMING_HANDSHKE_REQ = 111,
     OUTGOING_HANDSHAKE_REQ = 112
 
@@ -61,5 +67,6 @@ void uart_dma_write(const uint8_t *data, size_t len);
 void process_rx_dma(void);
 void serial_init(void);
 void handle_uart_rcv(void);
+void transmit_adc_meas();
 
 #endif
