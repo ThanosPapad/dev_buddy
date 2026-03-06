@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import threading
+import queue
 import time
 import struct
 from typing import List, Tuple, Optional
@@ -20,7 +21,8 @@ from packet_handler import (
 from config import (DEFAULT_BAUDRATE, RESPONSE_TIMEOUT,
                     WINDOW_WIDTH, WINDOW_HEIGHT, INPUT_UPDATE_INTERVAL,
                     ADC_CHANNEL_COUNT, ADC_TELEMETRY_TRANS,
-                    SET_ADC_INTERVAL_RESP, SET_ADC_INTERVAL_STATE_RESP)
+                    SET_ADC_INTERVAL_RESP, SET_ADC_INTERVAL_STATE_RESP,
+                    RESPONSE_HANDSHAKE_VALUE, INPUTS_RESPONSE_HANDSHAKE_VALUE)
 
 # ── Palette ────────────────────────────────────────────────────────────────────
 BG          = "#0d0f14"
@@ -313,17 +315,21 @@ class SerialConnectionApp:
         self.root.resizable(True, True)
         self.root.configure(bg=BG)
 
-        self.serial_connection     = None
-        self.is_connected          = False
-        self.handshake_active      = False
-        self.channel_states        = [False] * 11
-        self.device_id             = None
-        self._periodic_read_active = False
-        self._periodic_after_id    = None
+        self.serial_connection  = None
+        self.is_connected       = False
+        self.handshake_active   = False
+        self.channel_states     = [False] * 11
+        self.device_id          = None
+        self._adc_enabled       = False
 
-        # ADC background listener
-        self._adc_listener_active  = False
-        self._adc_enabled          = False   # tracks current device ADC enable state
+        # Single reader thread — owns the serial port exclusively.
+        # Response packets are routed via a Queue to whichever worker is
+        # waiting for them.  ADC telemetry is dispatched directly to the UI.
+        self._reader_active     = False
+        # Queue used by request/response workers (handshake, read inputs,
+        # set interval, set state).  Only one such operation runs at a time
+        # (enforced by the _tx_lock), so a single queue is sufficient.
+        self._response_queue    = queue.Queue()
 
         self._apply_styles()
         self._build_ui()
@@ -558,10 +564,11 @@ class SerialConnectionApp:
                                          initial=False, enabled=False)
         self._adc_toggle.grid(row=1, column=1, padx=(0, 20), sticky="w")
 
-        # Status label
+        # Status label — fixed width prevents layout shifting when text changes
         self._adc_status_lbl = tk.Label(ctrl, text="IDLE",
                                          bg=SURFACE2, fg=TEXT_DIM,
-                                         font=("Helvetica Neue", 8, "bold"))
+                                         font=("Helvetica Neue", 8, "bold"),
+                                         width=18, anchor="w")
         self._adc_status_lbl.grid(row=1, column=2, padx=(0, 20), sticky="w")
 
         # Last received timestamp
@@ -650,12 +657,12 @@ class SerialConnectionApp:
             self._connect_btn.config(text="DISCONNECT")
             self._handshake_btn.set_enabled(True)
             self._set_status("waiting", "WAITING")
+            self._start_reader()
         else:
             messagebox.showerror("Error", "Failed to connect to the selected device.")
 
     def _disconnect(self):
-        self._stop_periodic_reading()
-        self._stop_adc_listener()
+        self._stop_reader()
         self.handshake_active = False
         if self.serial_connection:
             close_serial_connection(self.serial_connection)
@@ -732,31 +739,30 @@ class SerialConnectionApp:
         threading.Thread(target=self._read_inputs_worker, daemon=True).start()
 
     def _read_inputs_worker(self):
+        """
+        Send GET_DEVICE_OUTPUTS_REQ and wait for GET_DEVICE_OUTPUTS_RESP (23)
+        to arrive via the response queue, which the single reader thread fills.
+        """
         try:
             pkt = create_inputs_packet(self.device_id)
             self.serial_connection.write(pkt + b"\x0A")
             self.log_sent_data(pkt + b"\x0A")
             self._set_status("busy", "READING")
-            buf, start = b"", time.time()
-            while time.time() - start < RESPONSE_TIMEOUT:
-                if not self.serial_connection:
-                    break
-                w = self.serial_connection.in_waiting
-                if w:
-                    buf += self.serial_connection.read(w)
-                    if b"\x0A" in buf:
-                        pos = buf.find(b"\x0A")
-                        dev = buf[:pos]
-                        self.log_received_data(buf[:pos + 1])
-                        ok, states = verify_inputs_response_packet(dev)
-                        if ok:
-                            self.root.after(0, lambda s=states: self._update_input_tiles(s))
-                            self._set_status("online", "ONLINE")
-                        else:
-                            self._set_status("waiting", "BAD PKT")
-                        return
-                time.sleep(0.01)
-            self._set_status("waiting", "TIMEOUT")
+
+            frame = self._wait_for_response(
+                expected_handshake=INPUTS_RESPONSE_HANDSHAKE_VALUE,
+                timeout=RESPONSE_TIMEOUT)
+
+            if frame is None:
+                self._set_status("waiting", "TIMEOUT")
+                return
+
+            ok, states = verify_inputs_response_packet(frame)
+            if ok:
+                self.root.after(0, lambda s=states: self._update_input_tiles(s))
+                self._set_status("online", "ONLINE")
+            else:
+                self._set_status("waiting", "BAD PKT")
         except Exception:
             self._set_status("waiting", "ERROR")
         finally:
@@ -775,42 +781,34 @@ class SerialConnectionApp:
         threading.Thread(target=self._handshake_worker, daemon=True).start()
 
     def _handshake_worker(self):
-        self.handshake_active = True
         success = False
         try:
             pkt = create_handshake_packet()
             self.serial_connection.write(pkt + b"\x0A")
             self.log_sent_data(pkt + b"\x0A")
-            buf, start = b"", time.time()
-            while time.time() - start < RESPONSE_TIMEOUT and self.handshake_active:
-                if not self.serial_connection:
-                    break
-                w = self.serial_connection.in_waiting
-                if w:
-                    buf += self.serial_connection.read(w)
-                    if b"\x0A" in buf:
-                        pos = buf.find(b"\x0A")
-                        dev = buf[:pos]
-                        self.log_received_data(buf[:pos + 1])
-                        if len(dev) >= 112:
-                            ok, dev_id = verify_response_packet(dev)
-                            if ok:
-                                self.device_id = dev_id
-                                success = True
-                                self._set_status("online", "ONLINE")
-                                self.root.after(0, self._on_handshake_success)
-                            else:
-                                self._set_status("offline", "BAD ACK")
-                        else:
-                            self._set_status("offline", "SHORT PKT")
-                        return
-                time.sleep(0.01)
-            if not success:
+
+            frame = self._wait_for_response(
+                expected_handshake=RESPONSE_HANDSHAKE_VALUE,
+                timeout=RESPONSE_TIMEOUT)
+
+            if frame is None:
                 self._set_status("offline", "TIMEOUT")
+                return
+
+            if len(frame) >= 112:
+                ok, dev_id = verify_response_packet(frame)
+                if ok:
+                    self.device_id = dev_id
+                    success = True
+                    self._set_status("online", "ONLINE")
+                    self.root.after(0, self._on_handshake_success)
+                else:
+                    self._set_status("offline", "BAD ACK")
+            else:
+                self._set_status("offline", "SHORT PKT")
         except Exception:
             self._set_status("offline", "ERROR")
         finally:
-            self.handshake_active = False
             self.root.after(0, lambda: self._handshake_btn.set_enabled(True))
             self.root.after(0, lambda: self._connect_btn.set_enabled(True))
 
@@ -819,131 +817,118 @@ class SerialConnectionApp:
         self._read_btn.set_enabled(True)
         self._adc_toggle.set_enabled(True)
         self._apply_interval_btn.set_enabled(True)
-        self._start_periodic_reading()
-        self._start_adc_listener()
 
-    # ── Periodic I/O polling ───────────────────────────────────────────────────
-    def _start_periodic_reading(self):
-        self._periodic_read_active = True
-        self._schedule_next_read()
+    # ── Single serial reader thread ────────────────────────────────────────────
+    def _start_reader(self):
+        """
+        Start the one background thread that owns all serial reads.
 
-    def _stop_periodic_reading(self):
-        self._periodic_read_active = False
-        if self._periodic_after_id:
-            try:
-                self.root.after_cancel(self._periodic_after_id)
-            except Exception:
-                pass
-            self._periodic_after_id = None
+        Every incoming frame is classified by its handshake byte (frame[8]):
 
-    def _schedule_next_read(self):
-        if self._periodic_read_active and self.is_connected and self.device_id is not None:
-            self._periodic_after_id = self.root.after(
-                INPUT_UPDATE_INTERVAL * 1000, self._periodic_read_tick)
+          102  ADC_TELEMETRY_TRANS   → dispatched directly to the UI
+          SET_ADC_INTERVAL_RESP  }
+          SET_ADC_INTERVAL_STATE_RESP  → put on _response_queue
+          RESPONSE_HANDSHAKE_VALUE  }  (workers waiting with _wait_for_response
+          INPUTS_RESPONSE_HANDSHAKE_VALUE  }   pick them up)
 
-    def _periodic_read_tick(self):
-        if not self._periodic_read_active or not self.is_connected or self.device_id is None:
-            return
-        threading.Thread(target=self._periodic_read_worker, daemon=True).start()
+        This ensures only ONE thread ever calls serial_connection.read(),
+        eliminating all races between the handshake worker, the read-inputs
+        worker, and the ADC telemetry stream.
+        """
+        self._reader_active = True
+        # Drain any stale bytes left in the OS buffer before we start
+        if self.serial_connection:
+            self.serial_connection.reset_input_buffer()
+        threading.Thread(target=self._reader_worker, daemon=True).start()
 
-    def _periodic_read_worker(self):
+    def _stop_reader(self):
+        self._reader_active = False
+        # Unblock any worker sitting on _response_queue.get()
         try:
-            pkt = create_inputs_packet(self.device_id)
-            self.serial_connection.write(pkt + b"\x0A")
-            buf, start = b"", time.time()
-            while time.time() - start < RESPONSE_TIMEOUT:
-                if not self.serial_connection or not self.is_connected:
-                    return
-                w = self.serial_connection.in_waiting
-                if w:
-                    buf += self.serial_connection.read(w)
-                    if b"\x0A" in buf:
-                        dev = buf[:buf.find(b"\x0A")]
-                        ok, states = verify_inputs_response_packet(dev)
-                        if ok:
-                            self.root.after(0, lambda s=states: self._update_input_tiles(s))
-                        return
-                time.sleep(0.01)
+            self._response_queue.put_nowait(None)
         except Exception:
             pass
-        finally:
-            self.root.after(0, self._schedule_next_read)
 
-    # ── ADC background listener ────────────────────────────────────────────────
-    def _start_adc_listener(self):
-        """
-        Start a persistent background thread that drains the serial RX buffer
-        looking for ADC_TELEMETRY_TRANS frames (handshake_value = 102).
-
-        The device sends these unsolicited whenever the ADC timer fires, so
-        we never send a request — we just wait and dispatch what arrives.
-        The listener runs alongside the periodic I/O polling; they share the
-        same serial port but the listener only consumes packets whose
-        handshake byte is 102; everything else is left for the polling thread.
-
-        NOTE: because both threads share one serial.Serial object we use a
-        coarse read+peek approach: grab whatever is in the RX buffer, scan
-        for 0x0A-terminated frames, classify each frame by its byte-9
-        handshake value, and hand off accordingly.
-        """
-        self._adc_listener_active = True
-        threading.Thread(target=self._adc_listener_worker, daemon=True).start()
-
-    def _stop_adc_listener(self):
-        self._adc_listener_active = False
-
-    def _adc_listener_worker(self):
-        """
-        Persistent reader loop.  Accumulates bytes into `buf`, splits on
-        0x0A, and dispatches each complete frame.
-        """
+    def _reader_worker(self):
         buf = b""
-        while self._adc_listener_active and self.is_connected:
+        while self._reader_active and self.is_connected:
             try:
                 if not self.serial_connection:
                     break
-                w = self.serial_connection.in_waiting
-                if w:
-                    buf += self.serial_connection.read(w)
-                    # Process every complete frame in the buffer
-                    while b"\x0A" in buf:
-                        pos   = buf.find(b"\x0A")
-                        frame = buf[:pos]          # frame without terminator
-                        buf   = buf[pos + 1:]       # remainder
+                waiting = self.serial_connection.in_waiting
+                if waiting:
+                    buf += self.serial_connection.read(waiting)
 
-                        if len(frame) < 9:
-                            continue
+                # Drain every complete \x0A-terminated frame from the buffer
+                while b"\x0A" in buf:
+                    pos   = buf.find(b"\x0A")
+                    frame = buf[:pos]       # raw frame bytes, no terminator
+                    buf   = buf[pos + 1:]   # keep remainder for next iteration
 
-                        handshake_byte = frame[8]
+                    if len(frame) < 9:
+                        continue           # too short to have a handshake byte
 
-                        if handshake_byte == ADC_TELEMETRY_TRANS:
-                            ok, channels = parse_adc_telemetry_packet(frame)
-                            if ok:
-                                ts = time.strftime("%H:%M:%S")
-                                self.root.after(0,
-                                    lambda ch=channels, t=ts:
-                                        self._handle_adc_telemetry(ch, t))
+                    # Log every received frame here — this is the single
+                    # point all RX bytes pass through, so nothing is missed.
+                    self.log_received_data(frame + b"\x0A")
 
-                        elif handshake_byte == SET_ADC_INTERVAL_RESP:
-                            ok, new_iv, success = verify_adc_interval_response(frame)
-                            if ok:
-                                self.root.after(0,
-                                    lambda iv=new_iv, s=success:
-                                        self._handle_interval_response(iv, s))
+                    hv = frame[8]          # handshake_value sits at byte index 8
 
-                        elif handshake_byte == SET_ADC_INTERVAL_STATE_RESP:
-                            ok, _ = verify_adc_state_response(frame)
-                            if ok:
-                                self.root.after(0, self._handle_state_response)
-
-                        # All other frames (inputs response, handshake, etc.)
-                        # are intentionally ignored here — the polling threads
-                        # handle them through their own blocking read loops.
+                    if hv == ADC_TELEMETRY_TRANS:
+                        # Unsolicited telemetry — go straight to the UI
+                        ok, channels = parse_adc_telemetry_packet(frame)
+                        if ok:
+                            ts = time.strftime("%H:%M:%S")
+                            self.root.after(0,
+                                lambda ch=channels, t=ts:
+                                    self._handle_adc_telemetry(ch, t))
+                    else:
+                        # Everything else is a response to a command we sent.
+                        # Put it on the queue so the waiting worker can take it.
+                        self._response_queue.put(frame)
 
             except Exception:
                 pass
 
-            time.sleep(0.005)   # 5 ms poll — keeps CPU use negligible
+            time.sleep(0.005)
+
+    def _wait_for_response(self, expected_handshake: int, timeout: float):
+        """
+        Block until the reader thread delivers a frame whose handshake byte
+        matches `expected_handshake`, or until `timeout` seconds elapse.
+
+        Any frames that arrive with a different handshake byte while we are
+        waiting are re-queued so they are not silently lost.
+
+        Returns the raw frame bytes (no terminator), or None on timeout.
+        """
+        deadline = time.time() + timeout
+        requeue  = []
+        result   = None
+
+        while time.time() < deadline:
+            remaining = deadline - time.time()
+            try:
+                frame = self._response_queue.get(timeout=max(remaining, 0.001))
+            except queue.Empty:
+                break
+
+            if frame is None:
+                # Sentinel pushed by _stop_reader — we are shutting down
+                break
+
+            if frame[8] == expected_handshake:
+                result = frame
+                break
+            else:
+                # Not what we want yet — save it and keep waiting
+                requeue.append(frame)
+
+        # Put back any frames we consumed but didn't need
+        for f in requeue:
+            self._response_queue.put(f)
+
+        return result
 
     # ── ADC UI callbacks (all called on the main thread via root.after) ────────
     def _handle_adc_telemetry(self, channels: List[Tuple[float, float]], ts: str):
@@ -962,9 +947,8 @@ class SerialConnectionApp:
         else:
             self._adc_status_lbl.config(text="INTERVAL FAILED", fg=DANGER)
 
-    def _handle_state_response(self):
-        state = self._adc_toggle.get_state()
-        if state:
+    def _handle_state_response(self, new_state: bool):
+        if new_state:
             self._adc_status_lbl.config(text="STREAMING", fg=ACCENT)
         else:
             self._adc_status_lbl.config(text="IDLE", fg=TEXT_DIM)
@@ -972,30 +956,50 @@ class SerialConnectionApp:
 
     # ── ADC control actions ────────────────────────────────────────────────────
     def _on_adc_toggle(self, new_state: bool):
-        """
-        Called when the user flips the STREAM toggle.
-        Sends SET_ADC_INTERVAL_STATE_REQ with enable = new_state.
-        Does not wait for the response — the listener thread handles it.
-        """
+        """Send SET_ADC_INTERVAL_STATE_REQ and wait for its ack in a thread."""
         if not self._check_ready():
-            # Revert the toggle visually if we're not ready
+            # Not connected — revert the visual toggle immediately
             self.root.after(0, lambda: self._adc_toggle.set_state(not new_state))
             return
+        # Disable the toggle while the command is in flight to prevent double-sends
+        self._adc_toggle.set_enabled(False)
+        status = "ENABLING…" if new_state else "DISABLING…"
+        self._adc_status_lbl.config(text=status, fg=WARN)
+        threading.Thread(
+            target=self._adc_state_worker, args=(new_state,), daemon=True).start()
+
+    def _adc_state_worker(self, new_state: bool):
+        sent = False
         try:
             pkt = create_set_adc_interval_state_packet(self.device_id, new_state)
             self.serial_connection.write(pkt + b"\x0A")
             self.log_sent_data(pkt + b"\x0A")
-            status = "ENABLING…" if new_state else "DISABLING…"
-            self._adc_status_lbl.config(text=status, fg=WARN)
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to send ADC state packet:\n{e}")
-            self.root.after(0, lambda: self._adc_toggle.set_state(not new_state))
+            sent = True
+
+            frame = self._wait_for_response(
+                expected_handshake=SET_ADC_INTERVAL_STATE_RESP,
+                timeout=RESPONSE_TIMEOUT)
+
+            if frame is not None:
+                # Device confirmed — update UI to reflect the new state
+                self.root.after(0, lambda s=new_state: self._handle_state_response(s))
+            else:
+                # No ack received — revert the toggle since we don't know device state
+                self.root.after(0, lambda: self._adc_status_lbl.config(
+                    text="NO RESPONSE", fg=DANGER))
+                self.root.after(0, lambda: self._adc_toggle.set_state(not new_state))
+        except Exception:
+            if not sent:
+                # Failed before even sending — safe to revert
+                self.root.after(0, lambda: self._adc_toggle.set_state(not new_state))
+            self.root.after(0, lambda: self._adc_status_lbl.config(
+                text="ERROR", fg=DANGER))
+        finally:
+            # Re-enable the toggle regardless of outcome
+            self.root.after(0, lambda: self._adc_toggle.set_enabled(True))
 
     def _send_adc_interval(self):
-        """
-        Called when APPLY INTERVAL is pressed.
-        Validates the entry field, then sends SET_ADC_INTERVAL_REQ.
-        """
+        """Validate, send SET_ADC_INTERVAL_REQ, and wait for response in a thread."""
         if not self._check_ready():
             return
         raw = self._interval_var.get().strip()
@@ -1007,13 +1011,31 @@ class SerialConnectionApp:
             messagebox.showerror("Error",
                                   "Interval must be a positive integer (milliseconds).")
             return
+        self._adc_status_lbl.config(text="UPDATING…", fg=WARN)
+        threading.Thread(
+            target=self._adc_interval_worker, args=(interval_ms,), daemon=True).start()
+
+    def _adc_interval_worker(self, interval_ms: int):
         try:
             pkt = create_set_adc_interval_packet(self.device_id, interval_ms)
             self.serial_connection.write(pkt + b"\x0A")
             self.log_sent_data(pkt + b"\x0A")
-            self._adc_status_lbl.config(text="UPDATING…", fg=WARN)
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to send ADC interval packet:\n{e}")
+
+            frame = self._wait_for_response(
+                expected_handshake=SET_ADC_INTERVAL_RESP,
+                timeout=RESPONSE_TIMEOUT)
+
+            if frame is not None:
+                ok, new_iv, success = verify_adc_interval_response(frame)
+                if ok:
+                    self.root.after(0,
+                        lambda iv=new_iv, s=success:
+                            self._handle_interval_response(iv, s))
+            else:
+                self.root.after(0, lambda: self._adc_status_lbl.config(
+                    text="TIMEOUT", fg=DANGER))
+        except Exception:
+            pass
 
     # ── Card helpers ───────────────────────────────────────────────────────────
     def _clear_adc_cards(self):

@@ -36,7 +36,7 @@ void uart_dma_write(const uint8_t *data, size_t len) {
         &uart_get_hw(UART_ID)->dr,
         data,
         len,
-        true);  // start immediately — CPU is now free
+        true); 
     
 }
 
@@ -55,7 +55,7 @@ void process_rx_dma(void) {
         uint8_t ch = rx_dma_buf[idx];
 
         // Line framing logic (same as original interrupt handler)
-        if (ch == '\n' || ch == '\r') {
+        if (ch == '\n') {
             rx_line[line_index] = '\0';
 
             // Update connection state based on current state
@@ -145,7 +145,7 @@ void handle_uart_rcv(void) {
                 break;
             case GET_DEVICE_OUTPUTS_REQ:
                 read_ins_flag = true;
-                absolute_time_t timeout = make_timeout_time_ms(50);
+                absolute_time_t timeout = make_timeout_time_ms(200);
                 while (read_ins_flag && !time_reached(timeout))
                 {
                     tight_loop_contents();
@@ -158,6 +158,7 @@ void handle_uart_rcv(void) {
                 memcpy(pack.data, &in_status, sizeof(input_read_t));
                 uart_dma_write((uint8_t*)&pack, sizeof(pack));
                 uart_dma_write((uint8_t*)"\n", 1);
+                // uart_dma_write((const char*)0x0A, 1);
                 break;
             case SET_ADC_INTERVAL_REQ:
                 uint32_t new_adc_interval = (uint32_t)pack.data[0] |
@@ -173,8 +174,8 @@ void handle_uart_rcv(void) {
                 break;
             case SET_ADC_INTERVAL_STATE_REQ:
                 uint8_t adc_state_set = pack.data[0];
-                // if (adc_state_set == 1) timer_enable(&adc_timer);
-                // else if (adc_state_set == 0) timer_disable(&adc_timer);
+                if (adc_state_set == 1) timer_enable(&adc_tlm_timer);
+                else if (adc_state_set == 0) timer_disable(&adc_tlm_timer);
                 pack.handshake_value = SET_ADC_INTERVAL_STATE_RESP;
                 uart_dma_write((uint8_t*)&pack, sizeof(pack));
                 uart_dma_write((uint8_t*)"\n", 1);

@@ -20,6 +20,7 @@ typedef struct
     absolute_time_t next_time;
     void (*callback)(void);
     bool initialized;
+    bool enabled;
 } repeat_timer_t;
 
 typedef struct {
@@ -42,8 +43,10 @@ void repeat_every_ex(repeat_timer_ex_t *timer,
                      uint32_t interval_ms,
                      void (*callback)(void*),
                      void *context);
-void timer_enable(repeat_timer_ex_t *timer);
-void timer_disable(repeat_timer_ex_t *timer);
+void timer_enable_ex(repeat_timer_ex_t *timer);
+void timer_disable_ex(repeat_timer_ex_t *timer);
+void timer_enable(repeat_timer_t *timer);
+void timer_disable(repeat_timer_t *timer);
 bool change_timer_period_ex(repeat_timer_ex_t *timer, uint32_t new_period_ms);
 bool change_timer_period(repeat_timer_t *timer, uint32_t new_period_ms);
 

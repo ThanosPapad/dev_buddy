@@ -1,0 +1,36 @@
+(kicad_sch
+	(version 20250114)
+	(generator "eeschema")
+	(generator_version "9.0")
+	(uuid "adff2fe3-9f99-4fb6-a2ef-0cdf0f2c98ac")
+	(paper "A3")
+	(title_block
+		(title "DevBuddy")
+		(date "2026-02-08")
+		(rev "1")
+	)
+	(lib_symbols)
+	(rectangle
+		(start 13.97 13.97)
+		(end 194.31 83.82)
+		(stroke
+			(width 1)
+			(type solid)
+		)
+		(fill
+			(type none)
+		)
+		(uuid c3c14447-fc36-4ea1-9b48-4632a89ebfa4)
+	)
+	(text "TODO; Add two adjastable channels\n"
+		(exclude_from_sim no)
+		(at 92.202 19.05 0)
+		(effects
+			(font
+				(face "Impact")
+				(size 4 4)
+			)
+		)
+		(uuid "2116ba52-ebdc-4a79-8aeb-df89e88123d7")
+	)
+)

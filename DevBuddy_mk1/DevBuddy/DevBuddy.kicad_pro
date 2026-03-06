@@ -420,6 +420,10 @@
     [
       "e371b76d-b707-425d-882b-33cb3d3ee657",
       "ADC_Channels"
+    ],
+    [
+      "a8dfd66d-f22f-4bb2-a152-310afcbfc561",
+      "Power_Supply_2"
     ]
   ],
   "text_variables": {}

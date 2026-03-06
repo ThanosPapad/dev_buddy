@@ -107,6 +107,25 @@ typedef enum {
     I_CHANNELS_ADC_PIN = 27
 } adc_channel_pins_t;
 
+// Multiplexer pins declarations
+typedef enum {
+    MUX_S0_PIN = 10,
+    MUX_S1_PIN = 11,
+    MUX_S2_PIN = 12
+} mux_pins_t;
+
+// Mux channel decrarations
+typedef enum {
+    MUX_CH0 = 0b000,  // S2=L S1=L S0=L -> Y0
+    MUX_CH1 = 0b001,  // S2=L S1=L S0=H -> Y1
+    MUX_CH2 = 0b010,  // S2=L S1=H S0=L -> Y2
+    MUX_CH3 = 0b011,  // S2=L S1=H S0=H -> Y3
+    MUX_CH4 = 0b100,  // S2=H S1=L S0=L -> Y4
+    MUX_CH5 = 0b101,  // S2=H S1=L S0=H -> Y5
+    MUX_CH6 = 0b110,  // S2=H S1=H S0=L -> Y6
+    MUX_CH7 = 0b111,  // S2=H S1=H S0=H -> Y7
+} mux_channel_t;
+
 // Variables used inside main
 extern output_control_t out_status;
 extern input_read_t in_status;
@@ -125,5 +144,6 @@ void read_input_channels (input_read_t *packet);
 void adc_init_internal ();
 channel_voltages_t read_adc_channels ();
 void read_adc_channels_wrapper(void *ctx);
+void mux_select(mux_channel_t ch);
 
 #endif

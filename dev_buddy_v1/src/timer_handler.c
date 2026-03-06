@@ -11,11 +11,12 @@ void repeat_every(repeat_timer_t *timer,
         timer->callback = callback;
         timer->next_time = make_timeout_time_ms(interval_ms);
         timer->initialized = true;
+        timer->enabled = true;
         return;
     }
 
     // Check if time reached
-    if (time_reached(timer->next_time))
+    if (timer->enabled && time_reached(timer->next_time))
     {
         timer->callback();
 
@@ -51,12 +52,22 @@ void repeat_every_ex(repeat_timer_ex_t *timer,
     }
 }
 
-void timer_enable(repeat_timer_ex_t *timer)
+void timer_enable_ex(repeat_timer_ex_t *timer)
 {
     timer->enabled = true;
 }
 
-void timer_disable(repeat_timer_ex_t *timer)
+void timer_disable_ex(repeat_timer_ex_t *timer)
+{
+    timer->enabled = false;
+}
+
+void timer_enable(repeat_timer_t *timer)
+{
+    timer->enabled = true;
+}
+
+void timer_disable(repeat_timer_t *timer)
 {
     timer->enabled = false;
 }

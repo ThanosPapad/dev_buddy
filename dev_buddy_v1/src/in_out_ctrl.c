@@ -166,7 +166,8 @@ channel_voltages_t read_adc_channels ()
     uint16_t raw = 0;
     const float conversion_factor = 3.3f / (1 << 12);  // 3.3V / 4096
     // TODO; Add more measurements for each reading to achieve better accuracy
-    // TODO; Set MUX channel 0
+    mux_select(MUX_CH0);
+    busy_wait_us_32(20); // Wait for 20 micro secs for mux to settle
     adc_select_input(0); // ADC0 - (GPIO26)
     raw = adc_read();    // (0-4095)
     res.ch_adc_meas_0.voltage_meas = raw * conversion_factor;
@@ -174,7 +175,8 @@ channel_voltages_t read_adc_channels ()
     raw = adc_read();
     res.ch_adc_meas_0.current_meas = raw * conversion_factor;
 
-    // TODO; Set MUX channel 1
+    mux_select(MUX_CH1);
+    busy_wait_us_32(20);
     adc_select_input(0); // ADC0 - (GPIO26)
     raw = adc_read();    // (0-4095)
     res.ch_adc_meas_1.voltage_meas = raw * conversion_factor;
@@ -182,7 +184,8 @@ channel_voltages_t read_adc_channels ()
     raw = adc_read();
     res.ch_adc_meas_1.current_meas = raw * conversion_factor;
 
-    // TODO; Set MUX channel 2
+    mux_select(MUX_CH2);
+    busy_wait_us_32(20);
     adc_select_input(0); // ADC0 - (GPIO26)
     raw = adc_read();    // (0-4095)
     res.ch_adc_meas_2.voltage_meas = raw * conversion_factor;
@@ -190,7 +193,8 @@ channel_voltages_t read_adc_channels ()
     raw = adc_read();
     res.ch_adc_meas_2.current_meas = raw * conversion_factor;
 
-    // TODO; Set MUX channel 3
+    mux_select(MUX_CH3);
+    busy_wait_us_32(20);
     adc_select_input(0); // ADC0 - (GPIO26)
     raw = adc_read();    // (0-4095)
     res.ch_adc_meas_3.voltage_meas = raw * conversion_factor;
@@ -198,7 +202,8 @@ channel_voltages_t read_adc_channels ()
     raw = adc_read();
     res.ch_adc_meas_3.current_meas = raw * conversion_factor;
 
-    // TODO; Set MUX channel 4
+    mux_select(MUX_CH4);
+    busy_wait_us_32(20);
     adc_select_input(0); // ADC0 - (GPIO26)
     raw = adc_read();    // (0-4095)
     res.ch_adc_meas_4.voltage_meas = raw * conversion_factor;
@@ -206,7 +211,8 @@ channel_voltages_t read_adc_channels ()
     raw = adc_read();
     res.ch_adc_meas_4.current_meas = raw * conversion_factor;
 
-    // TODO; Set MUX channel 5
+    mux_select(MUX_CH5);
+    busy_wait_us_32(20);
     adc_select_input(0); // ADC0 - (GPIO26)
     raw = adc_read();    // (0-4095)
     res.ch_adc_meas_5.voltage_meas = raw * conversion_factor;
@@ -214,7 +220,8 @@ channel_voltages_t read_adc_channels ()
     raw = adc_read();
     res.ch_adc_meas_5.current_meas = raw * conversion_factor;
 
-    // TODO; Set MUX channel 6
+    mux_select(MUX_CH6);
+    busy_wait_us_32(20);
     adc_select_input(0); // ADC0 - (GPIO26)
     raw = adc_read();    // (0-4095)
     res.ch_adc_meas_6.voltage_meas = raw * conversion_factor;
@@ -222,7 +229,8 @@ channel_voltages_t read_adc_channels ()
     raw = adc_read();
     res.ch_adc_meas_6.current_meas = raw * conversion_factor;
 
-    // TODO; Set MUX channel 7
+    mux_select(MUX_CH7);
+    busy_wait_us_32(20);
     adc_select_input(0); // ADC0 - (GPIO26)
     raw = adc_read();    // (0-4095)
     res.ch_adc_meas_7.voltage_meas = raw * conversion_factor;
@@ -237,4 +245,12 @@ void read_adc_channels_wrapper(void *ctx)
 {
     channel_voltages_t *dest = (channel_voltages_t*)ctx;
     *dest = read_adc_channels();
+}
+
+void mux_select(mux_channel_t ch) 
+{
+    gpio_put(MUX_S0_PIN, (ch >> 0) & 1);
+    gpio_put(MUX_S1_PIN, (ch >> 1) & 1);
+    gpio_put(MUX_S2_PIN, (ch >> 2) & 1);
+
 }
