@@ -9,4 +9,18 @@ It provides vast options in voltages to be used to supply the target board, curr
 * __Scripts__ - _Python script for the PC app_.
 * __dev_buddy_v1__ - _Firmware for the RP2350 MCU / Device_.
 
+### Current capabilities
+* All communication is happening over UART
+* Control digital outputs commanded by the APP
+* Reading digital inputs commanded by the APP
+* The device is capable of reporting back to the APP measurements of Voltages and Currents of 8 channels, with the ability to switch on or off the function as well as the intervals of the reporting
+* The APP looks cool as hell!
+
+### Things that need to be done
+* Scheduling files creation and use so that predefined sequences can run easily
+* Hardware and Software for the variable voltage channels control
+* The ability to record sessions of measuremnts, propably saved as CSV files
+* The ability to choose analog channels and view the measurements in a graph would be quite cool as well
+
+
 More updates to come soon!
