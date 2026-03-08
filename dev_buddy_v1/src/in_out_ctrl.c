@@ -81,6 +81,12 @@ void init_outputs()
     gpio_init((uint)CHANNEL_OUT_10);
     gpio_set_dir((uint)CHANNEL_OUT_10, GPIO_OUT);
 #endif
+    gpio_init((uint)MUX_S0_PIN);
+    gpio_set_dir((uint)MUX_S0_PIN, GPIO_OUT);
+    gpio_init((uint)MUX_S1_PIN);
+    gpio_set_dir((uint)MUX_S1_PIN, GPIO_OUT);
+    gpio_init((uint)MUX_S2_PIN);
+    gpio_set_dir((uint)MUX_S2_PIN, GPIO_OUT);
 }
 void init_inputs()
 {

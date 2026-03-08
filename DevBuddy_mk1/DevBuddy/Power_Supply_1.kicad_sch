@@ -2232,9 +2232,9 @@
 		)
 		(uuid "49481dab-96be-4c24-bc8d-c659c181f175")
 	)
-	(text "3V3 clean Channel Power supply @3A / 9.9W CHANNEL D\n"
+	(text "VarBuck1: Variable Clean Voltage from 0.8V up to 3.8V+"
 		(exclude_from_sim no)
-		(at 258.826 88.9 0)
+		(at 258.572 89.154 0)
 		(effects
 			(font
 				(face "Impact")
@@ -2345,6 +2345,12 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "0ef5847e-75a4-4846-8943-dcba0aa6faa2")
+	)
+	(junction
+		(at 377.19 119.38)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "110224a3-95ea-4b19-bb87-5744d8e9c037")
 	)
 	(junction
 		(at 44.45 180.34)
@@ -3846,6 +3852,16 @@
 	)
 	(wire
 		(pts
+			(xy 381 113.03) (xy 377.19 113.03)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "41d352bd-9cf1-4654-a7b8-f60a87a019e3")
+	)
+	(wire
+		(pts
 			(xy 378.46 187.96) (xy 378.46 189.23)
 		)
 		(stroke
@@ -4063,6 +4079,16 @@
 			(type default)
 		)
 		(uuid "4fc4e77e-3e1d-4a64-98d9-49d2cdf0bdca")
+	)
+	(wire
+		(pts
+			(xy 377.19 119.38) (xy 392.43 119.38)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "506d1be0-7a9e-413a-a653-798f6c684e05")
 	)
 	(wire
 		(pts
@@ -5423,6 +5449,16 @@
 			(type default)
 		)
 		(uuid "a75353e1-e733-43dd-8d5a-52ba047796a0")
+	)
+	(wire
+		(pts
+			(xy 377.19 113.03) (xy 377.19 119.38)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a9948a47-cf5b-4271-bd07-b30a6ed7053e")
 	)
 	(wire
 		(pts
@@ -6865,7 +6901,7 @@
 		(uuid "7fdfeb33-fccd-4fad-9407-81a2bcafbbfc")
 	)
 	(label "buck_fb"
-		(at 377.19 119.38 0)
+		(at 392.43 119.38 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6893,6 +6929,28 @@
 			(justify left bottom)
 		)
 		(uuid "f04c3cf6-a358-48a6-9dea-9a4195493592")
+	)
+	(global_label "VarBuck1_DAC_out"
+		(shape input)
+		(at 381 113.03 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "e96f173a-cdaa-4053-9654-41cac39bb448")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 401.3417 113.03 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
 	)
 	(symbol
 		(lib_id "power:GND")
@@ -15148,7 +15206,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "4k87"
+		(property "Value" "10k"
 			(at 370.84 124.4599 0)
 			(effects
 				(font
@@ -15766,7 +15824,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "15k4"
+		(property "Value" "10k"
 			(at 370.84 116.8399 0)
 			(effects
 				(font
@@ -20694,12 +20752,13 @@
 				(hide yes)
 			)
 		)
-		(property "Value" "+3V3_D"
-			(at 368.3 99.06 0)
+		(property "Value" "+VarOut1"
+			(at 370.84 102.8699 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(justify left)
 			)
 		)
 		(property "Footprint" ""

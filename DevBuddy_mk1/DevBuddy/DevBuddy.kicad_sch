@@ -2577,6 +2577,72 @@
 			)
 		)
 	)
+	(global_label "DAC1_Addr_Pin"
+		(shape input)
+		(at 152.4 90.17 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "183a43fa-6dee-4368-b6a0-c2d31f445099")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 169.3551 90.17 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "I2C_SDA"
+		(shape input)
+		(at 152.4 101.6 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "1fcf0aa7-1b30-415a-a68b-01627bf43f7f")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 163.0052 101.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "I2C_SCL"
+		(shape input)
+		(at 152.4 104.14 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "6994f4f2-2b9c-472c-913b-c769c54ed5cd")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 162.9447 104.14 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
 	(global_label "MUX_S2"
 		(shape input)
 		(at 148.59 81.28 0)
@@ -2590,6 +2656,28 @@
 		(uuid "a1169729-ceae-4398-b413-47e92d720010")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 158.9532 81.28 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "DAC2_Addr_Pin"
+		(shape input)
+		(at 152.4 92.71 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "eddd6188-a4de-470b-b198-fd458e688707")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 169.3551 92.71 0)
 			(effects
 				(font
 					(size 1.27 1.27)
