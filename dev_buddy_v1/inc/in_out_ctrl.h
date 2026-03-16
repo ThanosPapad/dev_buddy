@@ -132,7 +132,8 @@ extern input_read_t in_status;
 extern channel_voltages_t adc_meas;
 extern bool output_set_flag;
 extern bool read_ins_flag;
-
+extern uint16_t set_dac_1_value;
+extern uint16_t set_dac_2_value;
 // Function defines
 void toggle_led();
 void pico_led_init(void);

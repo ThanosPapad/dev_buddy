@@ -44,6 +44,7 @@ add_executable(dev_buddy_v1
         src/uart_coms.c
         src/in_out_ctrl.c
         src/timer_handler.c
+        src/i2c_drive.c
 )
 
 target_include_directories(dev_buddy_v1 PRIVATE
@@ -51,7 +52,14 @@ target_include_directories(dev_buddy_v1 PRIVATE
 )
 
 # pull in common dependencies
-target_link_libraries(dev_buddy_v1 pico_stdlib pico_unique_id hardware_dma pico_multicore hardware_adc)
+target_link_libraries(dev_buddy_v1 
+                pico_stdlib 
+                pico_unique_id 
+                hardware_dma 
+                pico_multicore 
+                hardware_adc
+                hardware_i2c
+                )
 # create map/bin/hex/uf2 file etc.
 pico_add_extra_outputs(dev_buddy_v1)
 

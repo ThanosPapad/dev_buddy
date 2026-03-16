@@ -11,6 +11,7 @@
 #include "pico/multicore.h"
 #include "in_out_ctrl.h"
 #include "timer_handler.h"
+#include "i2c_drive.h"
 
 connection_status_t conn_stat = IDLE_CONNECTION;
 output_control_t out_status = {0};
@@ -23,9 +24,13 @@ repeat_timer_ex_t adc_timer = {0};
 
 bool output_set_flag = 0;
 bool read_ins_flag = 0;
+bool set_dac_flag = 0;
 
+uint16_t set_dac_1_value = 2047;
+uint16_t set_dac_2_value = 2047;
 
-
+mcp4725_t dac;
+mcp4725_t dac_2;
 // Here runs core 1
 void core1_entry() {
     // Only initialize the tlm timer so it doesn't start straight away
@@ -34,6 +39,21 @@ void core1_entry() {
     adc_tlm_timer.next_time = make_timeout_time_ms(1000);
     adc_tlm_timer.initialized = true;
     adc_tlm_timer.enabled = false;
+    
+    mcp4725_fill(&dac, I2C_PORT, MCP4725_ADDR_DEFAULT);
+    mcp4725_init(&dac);
+    mcp4725_fill(&dac_2, I2C_PORT, MCP4725_ADDR_SECOND);
+    mcp4725_init(&dac_2);
+
+    int res = mcp4725_write_fast(&dac, 1595);
+    if (res == PICO_ERROR_GENERIC)
+    {
+        sleep_ms(100);
+    }
+
+    uint16_t dac_val, eeprom_val;
+    bool ready;
+    mcp4725_read(&dac, &dac_val, &eeprom_val, &ready);
 
     while (1){
 
@@ -43,6 +63,11 @@ void core1_entry() {
         if(conn_stat == COM_CONNECTED){
             repeat_every(&adc_tlm_timer, 1000, transmit_adc_meas);
         } 
+        if (set_dac_flag == true){
+            mcp4725_write_fast (&dac, set_dac_1_value);
+            mcp4725_write_fast (&dac_2, set_dac_2_value);
+            set_dac_flag = false;
+        }
         tight_loop_contents();
         // sleep_ms(100);
     }  
@@ -55,7 +80,6 @@ int main() {
     init_outputs();
     adc_init_internal();
     serial_init();
-    
 
     multicore_launch_core1(core1_entry);
 

@@ -6,7 +6,8 @@ from config import (HANDSHAKE_VALUE, SET_HANDSHAKE_VALUE,
                     CHIP_ID_SIZE,
                     SET_ADC_INTERVAL_REQ, SET_ADC_INTERVAL_RESP,
                     SET_ADC_INTERVAL_STATE_REQ, SET_ADC_INTERVAL_STATE_RESP,
-                    ADC_TELEMETRY_TRANS, ADC_CHANNEL_COUNT)
+                    ADC_TELEMETRY_TRANS, ADC_CHANNEL_COUNT,
+                    SET_DAC_VALUE_REQ, SET_DAC_VALUE_RESP)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -258,6 +259,66 @@ def verify_inputs_response_packet(response_data: bytes) -> Tuple[bool, Optional[
     for i in range(11):
         channel_states.append(1 if packet_data[10 + i] > 0 else 0)
     return True, channel_states
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DAC value control packets
+# ─────────────────────────────────────────────────────────────────────────────
+
+def create_set_dac_packet(device_id: bytes, dac1: int, dac2: int) -> bytes:
+    """
+    Build a SET_DAC_VALUE_REQ packet (handshake_value = 31).
+
+    Firmware decodes:
+        set_dac_1_value = ((uint16_t)pack.data[10] << 8) | pack.data[11];
+        set_dac_2_value = ((uint16_t)pack.data[12] << 8) | pack.data[13];
+
+    So each value is big-endian uint16 at offsets 10/11 and 12/13 within
+    the data[] field (i.e. absolute packet bytes 20/21 and 22/23).
+
+    Args:
+        device_id: 8-byte chip ID from the handshake response.
+        dac1:      DAC 1 code, 0–4095 (12-bit).
+        dac2:      DAC 2 code, 0–4095 (12-bit).
+
+    Returns:
+        112-byte packet ready to write to the serial port (append \\x0A).
+    """
+    if len(device_id) != CHIP_ID_SIZE:
+        raise ValueError(f"device_id must be {CHIP_ID_SIZE} bytes long")
+    if not (0 <= dac1 <= 4095):
+        raise ValueError(f"dac1 value {dac1} out of range 0–4095")
+    if not (0 <= dac2 <= 4095):
+        raise ValueError(f"dac2 value {dac2} out of range 0–4095")
+
+    data_array = bytearray(100)
+    # Firmware reads big-endian: (data[10] << 8) | data[11]
+    struct.pack_into('>H', data_array, 10, dac1)
+    struct.pack_into('>H', data_array, 12, dac2)
+
+    packet = struct.pack('<8B B B 100B H',
+                         *device_id,
+                         SET_DAC_VALUE_REQ,
+                         DEVICE_NUMBER,
+                         *data_array,
+                         PAYLOAD_LENGTH)
+    return packet
+
+
+def verify_dac_response(response_data: bytes) -> bool:
+    """
+    Verify a SET_DAC_VALUE_RESP packet (handshake_value = 32).
+
+    The firmware echoes the packet back with handshake_value = SET_DAC_VALUE_RESP.
+    Reception of a valid packet is treated as confirmation.
+
+    Returns:
+        True if the packet is a valid DAC response, False otherwise.
+    """
+    packet_data = _strip_terminator(response_data)
+    if len(packet_data) < 112:
+        return False
+    return packet_data[8] == SET_DAC_VALUE_RESP
 
 
 # ─────────────────────────────────────────────────────────────────────────────

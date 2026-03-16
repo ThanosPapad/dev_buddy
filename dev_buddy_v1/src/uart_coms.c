@@ -180,6 +180,14 @@ void handle_uart_rcv(void) {
                 uart_dma_write((uint8_t*)&pack, sizeof(pack));
                 uart_dma_write((uint8_t*)"\n", 1);
                 break;
+            case SET_DAC_VALUE_REQ:
+                set_dac_1_value = ((uint16_t)pack.data[10] << 8) | pack.data[11];
+                set_dac_2_value = ((uint16_t)pack.data[12] << 8) | pack.data[13];
+                set_dac_flag = true;
+                pack.handshake_value = SET_DAC_VALUE_RESP;
+                uart_dma_write((uint8_t*)&pack, sizeof(pack));
+                uart_dma_write((uint8_t*)"\n", 1);
+                break;
         }
 
         // uart_dma_write((uint8_t*)rx_line, strlen(rx_line));

@@ -1,7 +1,7 @@
 #include "in_out_ctrl.h"
 #include "hardware/adc.h"
 #include "uart_coms.h"
-
+#include "i2c_drive.h"
 void toggle_led()
 {
     static bool led_status = 0;
@@ -46,7 +46,8 @@ void update_outputs()
     gpio_put((uint)CHANNEL_OUT_9, out_status.channel_9_out);
     gpio_put((uint)CHANNEL_OUT_10, out_status.channel_10_out);
 #endif
-output_set_flag = false;
+
+    output_set_flag = false;
 }
 
 void init_outputs()

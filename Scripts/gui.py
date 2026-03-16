@@ -11,18 +11,22 @@ from packet_handler import (
     create_handshake_packet, create_set_packet,
     create_inputs_packet, verify_response_packet,
     verify_inputs_response_packet,
-    # NEW
+    # ADC
     create_set_adc_interval_packet,
     create_set_adc_interval_state_packet,
     verify_adc_interval_response,
     verify_adc_state_response,
     parse_adc_telemetry_packet,
+    # DAC
+    create_set_dac_packet,
+    verify_dac_response,
 )
 from config import (DEFAULT_BAUDRATE, RESPONSE_TIMEOUT,
                     WINDOW_WIDTH, WINDOW_HEIGHT, INPUT_UPDATE_INTERVAL,
                     ADC_CHANNEL_COUNT, ADC_TELEMETRY_TRANS,
                     SET_ADC_INTERVAL_RESP, SET_ADC_INTERVAL_STATE_RESP,
-                    RESPONSE_HANDSHAKE_VALUE, INPUTS_RESPONSE_HANDSHAKE_VALUE)
+                    RESPONSE_HANDSHAKE_VALUE, INPUTS_RESPONSE_HANDSHAKE_VALUE,
+                    SET_DAC_VALUE_RESP)
 
 # ── Palette ────────────────────────────────────────────────────────────────────
 BG          = "#0d0f14"
@@ -433,6 +437,7 @@ class SerialConnectionApp:
         self._build_outputs_tab(nb)
         self._build_inputs_tab(nb)
         self._build_adc_tab(nb)       # ← NEW
+        self._build_dac_tab(nb)       # ← DAC
 
     # ── Log tab ────────────────────────────────────────────────────────────────
     def _build_log_tab(self, nb):
@@ -617,6 +622,98 @@ class SerialConnectionApp:
                       "APPLY INTERVAL sends new period in ms",
                  bg=SURFACE2, fg=TEXT_DIM, font=FONT_SMALL).pack(side=tk.LEFT, padx=16)
 
+    # ── DAC tab ────────────────────────────────────────────────────────────────
+    def _build_dac_tab(self, nb):
+        """
+        DAC control tab.
+
+        Layout:
+          ┌──────────────────────────────────────────────────────┐
+          │  DAC CONTROL                                          │
+          │  DAC 1  [____________]   DAC 2  [____________]       │
+          │  (0 – 4095)                                           │
+          │                                    [  SET  ]          │
+          │  Status: IDLE                                         │
+          └──────────────────────────────────────────────────────┘
+        """
+        outer = tk.Frame(nb, bg=SURFACE)
+        outer.columnconfigure(0, weight=1)
+        outer.rowconfigure(0, weight=1)
+        nb.add(outer, text="  DAC  ")
+
+        inner = tk.Frame(outer, bg=SURFACE, padx=28, pady=24)
+        inner.grid(row=0, column=0, sticky="nsew")
+
+        # ── Section heading ───────────────────────────────────────────────────
+        tk.Label(inner, text="DAC CONTROL", bg=SURFACE, fg=TEXT_DIM,
+                 font=("Helvetica Neue", 8, "bold")).grid(
+                     row=0, column=0, columnspan=4, sticky="w", pady=(0, 18))
+
+        # ── DAC 1 ─────────────────────────────────────────────────────────────
+        tk.Label(inner, text="DAC 1", bg=SURFACE, fg=TEXT_DIM,
+                 font=FONT_SMALL).grid(row=1, column=0, sticky="w", padx=(0, 8))
+
+        self._dac1_var = tk.StringVar(value="0")
+        dac1_entry = tk.Entry(inner,
+                              textvariable=self._dac1_var,
+                              bg=SURFACE2, fg=TEXT,
+                              insertbackground=TEXT,
+                              relief="flat", bd=0,
+                              font=("Menlo", 11),
+                              width=8,
+                              highlightthickness=1,
+                              highlightbackground=BORDER,
+                              highlightcolor=ACCENT)
+        dac1_entry.grid(row=1, column=1, ipady=5, padx=(0, 32))
+
+        # ── DAC 2 ─────────────────────────────────────────────────────────────
+        tk.Label(inner, text="DAC 2", bg=SURFACE, fg=TEXT_DIM,
+                 font=FONT_SMALL).grid(row=1, column=2, sticky="w", padx=(0, 8))
+
+        self._dac2_var = tk.StringVar(value="0")
+        dac2_entry = tk.Entry(inner,
+                              textvariable=self._dac2_var,
+                              bg=SURFACE2, fg=TEXT,
+                              insertbackground=TEXT,
+                              relief="flat", bd=0,
+                              font=("Menlo", 11),
+                              width=8,
+                              highlightthickness=1,
+                              highlightbackground=BORDER,
+                              highlightcolor=ACCENT)
+        dac2_entry.grid(row=1, column=3, ipady=5, padx=(0, 0))
+
+        # ── Range hint ────────────────────────────────────────────────────────
+        tk.Label(inner, text="Integer  0 – 4095  (12-bit)",
+                 bg=SURFACE, fg=TEXT_DIM, font=FONT_SMALL).grid(
+                     row=2, column=0, columnspan=4, sticky="w", pady=(6, 22))
+
+        # ── Status label ──────────────────────────────────────────────────────
+        status_row = tk.Frame(inner, bg=SURFACE)
+        status_row.grid(row=3, column=0, columnspan=4, sticky="w")
+
+        tk.Label(status_row, text="STATUS", bg=SURFACE, fg=TEXT_DIM,
+                 font=FONT_SMALL).pack(side=tk.LEFT, padx=(0, 8))
+
+        self._dac_status_lbl = tk.Label(status_row, text="IDLE",
+                                         bg=SURFACE, fg=TEXT_DIM,
+                                         font=("Helvetica Neue", 8, "bold"),
+                                         width=20, anchor="w")
+        self._dac_status_lbl.pack(side=tk.LEFT)
+
+        # ── Footer with SET button ────────────────────────────────────────────
+        foot = tk.Frame(outer, bg=SURFACE2, pady=10)
+        foot.grid(row=1, column=0, sticky="ew")
+
+        self._dac_set_btn = FlatButton(foot, "SET",
+                                        command=self._send_dac_values,
+                                        accent=True, enabled=False, width=10)
+        self._dac_set_btn.pack(side=tk.RIGHT, padx=16)
+
+        tk.Label(foot, text="Values are sent together in a single packet",
+                 bg=SURFACE2, fg=TEXT_DIM, font=FONT_SMALL).pack(
+                     side=tk.LEFT, padx=16)
+
     # ── Status pill ────────────────────────────────────────────────────────────
     def _set_status(self, state: str, text: str):
         colors = {"offline": DANGER, "waiting": WARN,
@@ -675,6 +772,7 @@ class SerialConnectionApp:
         self._read_btn.set_enabled(False)
         self._adc_toggle.set_enabled(False)
         self._apply_interval_btn.set_enabled(False)
+        self._dac_set_btn.set_enabled(False)
         self._set_status("offline", "OFFLINE")
         self.root.after(0, self._reset_input_tiles)
         self.root.after(0, self._clear_adc_cards)
@@ -817,6 +915,7 @@ class SerialConnectionApp:
         self._read_btn.set_enabled(True)
         self._adc_toggle.set_enabled(True)
         self._apply_interval_btn.set_enabled(True)
+        self._dac_set_btn.set_enabled(True)
 
     # ── Single serial reader thread ────────────────────────────────────────────
     def _start_reader(self):
@@ -1036,6 +1135,51 @@ class SerialConnectionApp:
                     text="TIMEOUT", fg=DANGER))
         except Exception:
             pass
+
+    # ── DAC control actions ────────────────────────────────────────────────────
+    def _send_dac_values(self):
+        """Validate both DAC fields and send SET_DAC_VALUE_REQ in a thread."""
+        if not self._check_ready():
+            return
+
+        raw1 = self._dac1_var.get().strip()
+        raw2 = self._dac2_var.get().strip()
+        try:
+            dac1 = int(raw1)
+            dac2 = int(raw2)
+            if not (0 <= dac1 <= 4095) or not (0 <= dac2 <= 4095):
+                raise ValueError
+        except ValueError:
+            messagebox.showerror("Error",
+                                  "Both DAC values must be integers in the range 0 – 4095.")
+            return
+
+        self._dac_status_lbl.config(text="SENDING…", fg=WARN)
+        self._dac_set_btn.set_enabled(False)
+        threading.Thread(
+            target=self._dac_worker, args=(dac1, dac2), daemon=True).start()
+
+    def _dac_worker(self, dac1: int, dac2: int):
+        try:
+            pkt = create_set_dac_packet(self.device_id, dac1, dac2)
+            self.serial_connection.write(pkt + b"\x0A")
+            self.log_sent_data(pkt + b"\x0A")
+
+            frame = self._wait_for_response(
+                expected_handshake=SET_DAC_VALUE_RESP,
+                timeout=RESPONSE_TIMEOUT)
+
+            if frame is not None and verify_dac_response(frame):
+                self.root.after(0, lambda: self._dac_status_lbl.config(
+                    text=f"OK  DAC1={dac1}  DAC2={dac2}", fg=ACCENT))
+            else:
+                self.root.after(0, lambda: self._dac_status_lbl.config(
+                    text="NO RESPONSE", fg=DANGER))
+        except Exception:
+            self.root.after(0, lambda: self._dac_status_lbl.config(
+                text="ERROR", fg=DANGER))
+        finally:
+            self.root.after(0, lambda: self._dac_set_btn.set_enabled(True))
 
     # ── Card helpers ───────────────────────────────────────────────────────────
     def _clear_adc_cards(self):

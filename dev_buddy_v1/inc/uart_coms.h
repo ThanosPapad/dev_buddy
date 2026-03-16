@@ -33,6 +33,8 @@ typedef enum
     SET_DEVICE_OUTPUTS = 21,
     GET_DEVICE_OUTPUTS_REQ = 22,
     GET_DEVICE_OUTPUTS_RESP = 23,
+    SET_DAC_VALUE_REQ = 31,
+    SET_DAC_VALUE_RESP = 32,
     ADC_TELEMETRY_TRANS = 102,
     INCOMING_HANDSHKE_REQ = 111,
     OUTGOING_HANDSHAKE_REQ = 112
@@ -60,7 +62,7 @@ typedef struct __attribute__((packed))
 } handshake_packet_t;
 
 extern connection_status_t conn_stat;
-
+extern bool set_dac_flag;
 // void handle_uart_rcv();
 
 void uart_dma_write(const uint8_t *data, size_t len);

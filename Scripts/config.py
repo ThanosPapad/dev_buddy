@@ -16,6 +16,10 @@ SET_ADC_INTERVAL_STATE_REQ   = 13   # 0x0D — enable / disable ADC timer
 SET_ADC_INTERVAL_STATE_RESP  = 14   # 0x0E — device confirms state change
 ADC_TELEMETRY_TRANS          = 102  # 0x66 — unsolicited ADC telemetry frame
 
+# DAC control packet types
+SET_DAC_VALUE_REQ            = 31   # 0x1F — set DAC1 and DAC2 output values
+SET_DAC_VALUE_RESP           = 32   # 0x20 — device confirms new DAC values
+
 # Number of ADC channels exposed by channel_voltages_t
 ADC_CHANNEL_COUNT = 8
 
