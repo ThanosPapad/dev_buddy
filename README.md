@@ -18,7 +18,7 @@ It provides vast options in voltages to be used to supply the target board, curr
 * The APP looks cool as hell!
 * Added support for two 8-Bit DACs for APP and Device
 * Added two controllable voltage channels on PCB, firmware will have to come later
-![Alt text](Resources/screenshots/DevBuddy_App_ADC_tab.png)
+![Alt text](https://github.com/ThanosPapad/dev_buddy/blob/main/Resources/Screenshots/DevBuddy_App_ADC_tab.png)
 
 
 ### Things that need to be done
