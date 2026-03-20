@@ -8,7 +8,7 @@ It provides vast options in voltages to be used to supply the target board, curr
 * __DevBuddy_mk1__ - _Hardware files in KiCad_.
 * __Scripts__ - _Python script for the PC app_.
 * __dev_buddy_v1__ - _Firmware for the RP2350 MCU / Device_.
-* __Resources__ - _You can find the current PCB schematic and screenshots_.
+* __Resources__ - _You can find the current PCB schematic PDF and screenshots_.
 
 ### Current capabilities
 * All communication is happening over UART
@@ -27,5 +27,6 @@ It provides vast options in voltages to be used to supply the target board, curr
 * The ability to record sessions of measuremnts, propably saved as CSV files
 * The ability to choose analog channels and view the measurements in a graph would be quite cool as well
 * The schematic should progressing quicker
+* Need to figure out how the externa channels will work, and If external I2C is needed as well
 
 More updates to come soon!

@@ -397,7 +397,7 @@
     },
     "net_format_name": "",
     "page_layout_descr_file": "",
-    "plot_directory": "",
+    "plot_directory": "../../Resources/",
     "space_save_all_events": true,
     "spice_current_sheet_as_root": false,
     "spice_external_command": "spice \"%I\"",
@@ -424,6 +424,10 @@
     [
       "a8dfd66d-f22f-4bb2-a152-310afcbfc561",
       "Power_Supply_2"
+    ],
+    [
+      "e2115eb6-15db-4458-a49a-71402c53f71b",
+      "DevBuddy_Logic"
     ]
   ],
   "text_variables": {}

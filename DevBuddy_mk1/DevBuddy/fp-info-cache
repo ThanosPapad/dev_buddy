@@ -1,4 +1,11 @@
-27250046467436241
+27255368320723222
+AOTA-B201610S3R3-101-T
+AOTAB201610S3R3101T
+AOTA-B201610S3R3-101-T
+Inductor
+0
+2
+2
 Audio_Module
 Reverb_BTDR-1H
 Digital Reverberation Unit, http://www.belton.co.kr/inc/downfile.php?seq=17&file=pdf (footprint from http://www.uk-electronic.de/PDF/BTDR-1.pdf)
@@ -107148,6 +107155,13 @@ igbt diode module
 0
 25
 25
+USB-C_Vertical
+CONN_2171820001_MOL
+
+2171820001 
+0
+16
+16
 Valve
 Valve_ECC-83-1
 Valve ECC-83-1 round pins
@@ -107929,6 +107943,13 @@ Varistor
 Varistor_Panasonic_VF
 Panasonic VF series varistor, 6x8mm body, 3.2mm height, https://mediap.industry.panasonic.eu/assets/imported/industrial.panasonic.com/cdbs/www-data/pdf/AWA0000/AWA0000C4.pdf
 Varistor VF
+0
+2
+2
+footprints
+B3U-1000P
+
+B3U-1000P 
 0
 2
 2
