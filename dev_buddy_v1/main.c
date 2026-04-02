@@ -13,6 +13,8 @@
 #include "timer_handler.h"
 #include "i2c_drive.h"
 #include "usb_descriptors.h"
+#include "tusb.h"
+
 
 connection_status_t conn_stat = IDLE_CONNECTION;
 output_control_t out_status = {0};
@@ -32,6 +34,10 @@ uint16_t set_dac_2_value = 2047;
 
 mcp4725_t dac;
 mcp4725_t dac_2;
+
+volatile bool usb_active = false;
+
+
 // Here runs core 1
 void core1_entry() {
     // Only initialize the tlm timer so it doesn't start straight away
@@ -94,6 +100,8 @@ int main() {
         repeat_every(&led_timer, 1000, toggle_led);
 
         tud_task();
+
+        feed_usb_rx();
 
         tight_loop_contents();
     }

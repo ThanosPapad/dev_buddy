@@ -6,6 +6,7 @@
 #include "hardware/irq.h"
 #include <string.h>
 #include "timer_handler.h"
+#include "tusb.h"
 
 static int dma_tx_ch;
 static int dma_rx_ch;
@@ -38,6 +39,15 @@ void uart_dma_write(const uint8_t *data, size_t len) {
         len,
         true); 
     
+    if (tud_cdc_connected()) {
+        uint32_t sent = 0;
+        while (sent < len) {
+            sent += tud_cdc_write(data + sent, len - sent);
+            tud_task();
+        }
+        tud_cdc_write_flush();
+    }
+
 }
 
 void process_rx_dma(void) {
@@ -205,4 +215,30 @@ void transmit_adc_meas()
     pack.payload_length = 112;
     uart_dma_write((uint8_t *)&pack, sizeof(pack));
     uart_dma_write((uint8_t *)"\n", 1);
+}
+
+void feed_usb_rx(void) 
+{
+    if (!tud_cdc_connected() || !tud_cdc_available()) return;
+
+    uint8_t buf[64];
+    uint32_t count = tud_cdc_read(buf, sizeof(buf));
+
+    for (uint32_t i = 0; i < count; i++) {
+        uint8_t ch = buf[i];
+        // Exact same framing logic as process_rx_dma — no refactor needed
+        if (ch == '\n') {
+            rx_line[line_index] = '\0';
+            if (conn_stat == IDLE_CONNECTION)
+                conn_stat = COM_FULL_CONFIRMCON;
+            else if (conn_stat == COM_CONNECTED)
+                conn_stat = COM_FULL;
+            line_index = 0;
+        } else {
+            if (line_index < RX_MAX_LEN)
+                rx_line[line_index++] = ch;
+            else
+                line_index = 0;
+        }
+    }
 }

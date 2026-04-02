@@ -63,6 +63,7 @@ typedef struct __attribute__((packed))
 
 extern connection_status_t conn_stat;
 extern bool set_dac_flag;
+extern volatile bool usb_active;
 // void handle_uart_rcv();
 
 void uart_dma_write(const uint8_t *data, size_t len);
@@ -70,5 +71,6 @@ void process_rx_dma(void);
 void serial_init(void);
 void handle_uart_rcv(void);
 void transmit_adc_meas();
+void feed_usb_rx(void);
 
 #endif
