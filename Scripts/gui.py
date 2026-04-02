@@ -7,6 +7,14 @@ import struct
 from typing import List, Tuple, Optional
 
 from serial_utils import get_serial_devices, connect_to_serial, close_serial_connection
+from dispatcher import (
+    load_sequences, save_new_sequence, delete_sequence,
+    default_step, step_label,
+    ALL_COMMANDS, CMD_LABELS, CMD_DEFAULTS,
+    CMD_SET_OUTPUTS, CMD_SET_DAC, CMD_SET_ADC_INTERVAL,
+    CMD_SET_ADC_STATE, CMD_DELAY,
+    SequenceRunner,
+)
 from packet_handler import (
     create_handshake_packet, create_set_packet,
     create_inputs_packet, verify_response_packet,
@@ -436,8 +444,9 @@ class SerialConnectionApp:
         self._build_log_tab(nb)
         self._build_outputs_tab(nb)
         self._build_inputs_tab(nb)
-        self._build_adc_tab(nb)       # ← NEW
-        self._build_dac_tab(nb)       # ← DAC
+        self._build_adc_tab(nb)
+        self._build_dac_tab(nb)
+        self._build_dispatcher_tab(nb)
 
     # ── Log tab ────────────────────────────────────────────────────────────────
     def _build_log_tab(self, nb):
@@ -713,6 +722,571 @@ class SerialConnectionApp:
         tk.Label(foot, text="Values are sent together in a single packet",
                  bg=SURFACE2, fg=TEXT_DIM, font=FONT_SMALL).pack(
                      side=tk.LEFT, padx=16)
+
+    # ── Dispatcher tab ─────────────────────────────────────────────────────────
+    def _build_dispatcher_tab(self, nb):
+        outer = tk.Frame(nb, bg=SURFACE)
+        outer.columnconfigure(0, weight=1)
+        outer.rowconfigure(1, weight=1)
+        nb.add(outer, text="  DISPATCHER  ")
+
+        inner = tk.Frame(outer, bg=SURFACE, padx=28, pady=24)
+        inner.grid(row=0, column=0, sticky="nsew")
+        inner.columnconfigure(1, weight=1)
+
+        # ── Heading ───────────────────────────────────────────────────────────
+        tk.Label(inner, text="SEQUENCE DISPATCHER", bg=SURFACE, fg=TEXT_DIM,
+                 font=("Helvetica Neue", 8, "bold")).grid(
+                     row=0, column=0, columnspan=4, sticky="w", pady=(0, 18))
+
+        # ── Sequence selector ─────────────────────────────────────────────────
+        tk.Label(inner, text="SEQUENCE", bg=SURFACE, fg=TEXT_DIM,
+                 font=FONT_SMALL).grid(row=1, column=0, sticky="w", padx=(0, 10))
+
+        self._disp_seq_var = tk.StringVar()
+        self._disp_seq_dropdown = ttk.Combobox(
+            inner, textvariable=self._disp_seq_var,
+            state="readonly", width=32, font=FONT_LABEL)
+        self._disp_seq_dropdown.grid(row=1, column=1, sticky="w", padx=(0, 10))
+
+        # ── Loop count ────────────────────────────────────────────────────────
+        tk.Label(inner, text="LOOPS", bg=SURFACE, fg=TEXT_DIM,
+                 font=FONT_SMALL).grid(row=1, column=2, sticky="w", padx=(20, 8))
+
+        self._disp_loops_var = tk.StringVar(value="1")
+        loops_entry = tk.Entry(inner,
+                               textvariable=self._disp_loops_var,
+                               bg=SURFACE2, fg=TEXT,
+                               insertbackground=TEXT,
+                               relief="flat", bd=0,
+                               font=("Menlo", 11),
+                               width=5,
+                               highlightthickness=1,
+                               highlightbackground=BORDER,
+                               highlightcolor=ACCENT)
+        loops_entry.grid(row=1, column=3, ipady=5, sticky="w")
+
+        # ── Description area ──────────────────────────────────────────────────
+        self._disp_desc_lbl = tk.Label(inner, text="", bg=SURFACE, fg=TEXT_DIM,
+                                        font=FONT_SMALL, anchor="w", justify="left")
+        self._disp_desc_lbl.grid(row=2, column=0, columnspan=4, sticky="w",
+                                  pady=(12, 0))
+
+        self._disp_seq_dropdown.bind("<<ComboboxSelected>>",
+                                      lambda _: self._disp_on_select())
+
+        # ── Footer bar ────────────────────────────────────────────────────────
+        foot = tk.Frame(outer, bg=SURFACE2, pady=10)
+        foot.grid(row=1, column=0, sticky="ew")
+
+        self._disp_run_btn = FlatButton(foot, "▶  RUN",
+                                         command=self._disp_run,
+                                         accent=True, width=12)
+        self._disp_run_btn.pack(side=tk.RIGHT, padx=(6, 16))
+
+        FlatButton(foot, "＋  CREATE",
+                   command=self._disp_open_builder,
+                   width=12).pack(side=tk.RIGHT, padx=6)
+
+        self._disp_edit_btn = FlatButton(foot, "✎  EDIT",
+                                          command=self._disp_open_editor,
+                                          width=10)
+        self._disp_edit_btn.pack(side=tk.RIGHT, padx=6)
+
+        FlatButton(foot, "⟳", command=self._disp_refresh, width=3).pack(
+            side=tk.LEFT, padx=(16, 6))
+        tk.Label(foot, text="Select a sequence and press RUN",
+                 bg=SURFACE2, fg=TEXT_DIM, font=FONT_SMALL).pack(
+                     side=tk.LEFT, padx=6)
+
+        self._disp_refresh()
+
+    def _disp_refresh(self):
+        seqs = load_sequences()
+        names = [s.get("name", "Unnamed") for s in seqs]
+        self._disp_seq_dropdown["values"] = names
+        if names:
+            if self._disp_seq_var.get() not in names:
+                self._disp_seq_dropdown.current(0)
+            self._disp_on_select()
+        else:
+            self._disp_seq_var.set("")
+            self._disp_desc_lbl.config(text="No sequences saved yet. Press CREATE to add one.")
+
+    def _disp_on_select(self):
+        name = self._disp_seq_var.get()
+        seqs = load_sequences()
+        seq  = next((s for s in seqs if s.get("name") == name), None)
+        if seq:
+            steps = seq.get("steps", [])
+            lines = [f"  {i+1}.  {step_label(s)}" for i, s in enumerate(steps)]
+            self._disp_desc_lbl.config(
+                text=f"{len(steps)} step(s):\n" + "\n".join(lines))
+
+    def _disp_run(self):
+        name = self._disp_seq_var.get()
+        if not name:
+            messagebox.showerror("Error", "Please select a sequence first.")
+            return
+        if not self.is_connected or self.device_id is None:
+            messagebox.showerror("Error",
+                "Not connected or handshake not performed.")
+            return
+        try:
+            loops = int(self._disp_loops_var.get())
+            if loops < 1:
+                raise ValueError
+        except ValueError:
+            messagebox.showerror("Error", "Loops must be a positive integer.")
+            return
+
+        seqs = load_sequences()
+        seq  = next((s for s in seqs if s.get("name") == name), None)
+        if not seq:
+            messagebox.showerror("Error", "Sequence not found.")
+            return
+
+        self._open_execution_window(seq, loops)
+
+    def _disp_open_builder(self):
+        self._open_sequence_builder(existing=None)
+
+    def _disp_open_editor(self):
+        name = self._disp_seq_var.get()
+        if not name:
+            messagebox.showerror("Error", "Please select a sequence to edit.")
+            return
+        seqs = load_sequences()
+        seq  = next((s for s in seqs if s.get("name") == name), None)
+        if seq:
+            self._open_sequence_builder(existing=seq)
+
+    # ── Execution window ───────────────────────────────────────────────────────
+    def _open_execution_window(self, seq: dict, loops: int):
+        win = tk.Toplevel(self.root)
+        win.title(f"Running: {seq.get('name', '')}")
+        win.geometry("640x480")
+        win.minsize(540, 360)
+        win.configure(bg=BG)
+        win.grab_set()
+
+        steps = seq.get("steps", [])
+
+        # ── Header ────────────────────────────────────────────────────────────
+        hdr = tk.Frame(win, bg=SURFACE2, pady=12, padx=18)
+        hdr.pack(fill=tk.X)
+        tk.Label(hdr, text=seq.get("name", "").upper(),
+                 bg=SURFACE2, fg=TEXT,
+                 font=("Helvetica Neue", 11, "bold")).pack(side=tk.LEFT)
+        self._exec_loop_lbl = tk.Label(hdr, text=f"Loop 1 / {loops}",
+                                        bg=SURFACE2, fg=TEXT_DIM, font=FONT_SMALL)
+        self._exec_loop_lbl.pack(side=tk.RIGHT)
+
+        # ── Step cards ────────────────────────────────────────────────────────
+        canvas = tk.Canvas(win, bg=BG, highlightthickness=0)
+        vsb    = ttk.Scrollbar(win, orient=tk.VERTICAL, command=canvas.yview)
+        canvas.configure(yscrollcommand=vsb.set)
+        vsb.pack(side=tk.RIGHT, fill=tk.Y)
+        canvas.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
+
+        cards_frame = tk.Frame(canvas, bg=BG)
+        canvas_win  = canvas.create_window((0, 0), window=cards_frame, anchor="nw")
+
+        def _on_frame_configure(_):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        def _on_canvas_configure(e):
+            canvas.itemconfig(canvas_win, width=e.width)
+        cards_frame.bind("<Configure>", _on_frame_configure)
+        canvas.bind("<Configure>", _on_canvas_configure)
+
+        # Build one row per step
+        step_frames = []   # (outer_frame, status_label, msg_label)
+        for i, step in enumerate(steps):
+            row = tk.Frame(cards_frame, bg=SURFACE2, pady=8, padx=14)
+            row.pack(fill=tk.X, padx=14, pady=4)
+
+            num_lbl = tk.Label(row, text=f"{i+1:02d}",
+                               bg=SURFACE2, fg=TEXT_DIM, font=FONT_SMALL, width=3)
+            num_lbl.pack(side=tk.LEFT)
+
+            cmd_lbl = tk.Label(row, text=step_label(step),
+                               bg=SURFACE2, fg=TEXT, font=FONT_UI, anchor="w")
+            cmd_lbl.pack(side=tk.LEFT, padx=(8, 0), fill=tk.X, expand=True)
+
+            status_lbl = tk.Label(row, text="WAITING",
+                                   bg=SURFACE2, fg=TEXT_DIM,
+                                   font=("Helvetica Neue", 8, "bold"), width=10)
+            status_lbl.pack(side=tk.RIGHT, padx=(8, 0))
+
+            msg_lbl = tk.Label(row, text="",
+                               bg=SURFACE2, fg=TEXT_DIM, font=FONT_SMALL,
+                               anchor="e", width=28)
+            msg_lbl.pack(side=tk.RIGHT)
+
+            step_frames.append((row, status_lbl, msg_lbl))
+
+        # ── Footer ────────────────────────────────────────────────────────────
+        foot = tk.Frame(win, bg=SURFACE2, pady=10)
+        foot.pack(fill=tk.X, side=tk.BOTTOM)
+
+        exec_status = tk.Label(foot, text="RUNNING…",
+                               bg=SURFACE2, fg=WARN,
+                               font=("Helvetica Neue", 9, "bold"))
+        exec_status.pack(side=tk.LEFT, padx=16)
+
+        stop_btn = FlatButton(foot, "■  STOP", width=10,
+                              command=lambda: runner.stop())
+        stop_btn.pack(side=tk.RIGHT, padx=16)
+
+        # Colour helpers
+        _NEUTRAL = SURFACE2
+        _RUN_BG  = "#2a2500"   # dark amber
+        _OK_BG   = "#0a2a1a"   # dark green
+        _FAIL_BG = "#2a0a0a"   # dark red
+
+        def _reset_cards():
+            for row, slbl, mlbl in step_frames:
+                row.config(bg=_NEUTRAL)
+                for w in row.winfo_children():
+                    w.config(bg=_NEUTRAL)
+                slbl.config(text="WAITING", fg=TEXT_DIM)
+                mlbl.config(text="")
+
+        def _on_loop_start(loop_num, total):
+            win.after(0, lambda: self._exec_loop_lbl.config(
+                text=f"Loop {loop_num} / {total}"))
+            win.after(0, _reset_cards)
+
+        def _on_step_start(idx):
+            if idx >= len(step_frames):
+                return
+            row, slbl, mlbl = step_frames[idx]
+            def _upd():
+                row.config(bg=_RUN_BG)
+                for w in row.winfo_children():
+                    w.config(bg=_RUN_BG)
+                slbl.config(text="RUNNING", fg=WARN)
+                canvas.yview_moveto(idx / max(len(steps), 1))
+            win.after(0, _upd)
+
+        def _on_step_done(idx, ok, msg):
+            if idx >= len(step_frames):
+                return
+            row, slbl, mlbl = step_frames[idx]
+            bg    = _OK_BG   if ok else _FAIL_BG
+            fg    = ACCENT   if ok else DANGER
+            txt   = "OK"     if ok else "FAILED"
+            def _upd():
+                row.config(bg=bg)
+                for w in row.winfo_children():
+                    w.config(bg=bg)
+                slbl.config(text=txt, fg=fg)
+                mlbl.config(text=msg, fg=fg)
+            win.after(0, _upd)
+
+        def _on_finished(aborted):
+            def _upd():
+                if aborted:
+                    exec_status.config(text="STOPPED", fg=DANGER)
+                else:
+                    exec_status.config(text="COMPLETE", fg=ACCENT)
+                stop_btn.config(state="disabled")
+            win.after(0, _upd)
+
+        runner = SequenceRunner(
+            sequence           = seq,
+            loops              = loops,
+            serial_connection  = self.serial_connection,
+            device_id          = self.device_id,
+            wait_for_response  = self._wait_for_response,
+            on_step_start      = _on_step_start,
+            on_step_done       = _on_step_done,
+            on_loop_start      = _on_loop_start,
+            on_finished        = _on_finished,
+        )
+        runner.start()
+
+        # If user closes the window, stop the runner
+        win.protocol("WM_DELETE_WINDOW", lambda: (runner.stop(), win.destroy()))
+
+    # ── Sequence builder / editor window ──────────────────────────────────────
+    def _open_sequence_builder(self, existing: Optional[dict]):
+        win = tk.Toplevel(self.root)
+        title = "Edit Sequence" if existing else "Create Sequence"
+        win.title(title)
+        win.geometry("820x580")
+        win.minsize(700, 440)
+        win.configure(bg=BG)
+        win.grab_set()
+
+        # Working copy of steps
+        steps: List[dict] = []
+        if existing:
+            import copy
+            steps = copy.deepcopy(existing.get("steps", []))
+
+        # ── Header ────────────────────────────────────────────────────────────
+        hdr = tk.Frame(win, bg=SURFACE2, pady=12, padx=18)
+        hdr.pack(fill=tk.X)
+        tk.Label(hdr, text=title.upper(), bg=SURFACE2, fg=TEXT,
+                 font=("Helvetica Neue", 11, "bold")).pack(side=tk.LEFT)
+
+        # ── Name field ────────────────────────────────────────────────────────
+        name_row = tk.Frame(win, bg=BG, padx=18, pady=10)
+        name_row.pack(fill=tk.X)
+        tk.Label(name_row, text="NAME", bg=BG, fg=TEXT_DIM,
+                 font=FONT_SMALL).pack(side=tk.LEFT, padx=(0, 10))
+        name_var = tk.StringVar(value=existing.get("name", "") if existing else "")
+        name_entry = tk.Entry(name_row, textvariable=name_var,
+                              bg=SURFACE2, fg=TEXT, insertbackground=TEXT,
+                              relief="flat", bd=0, font=("Menlo", 11), width=34,
+                              highlightthickness=1, highlightbackground=BORDER,
+                              highlightcolor=ACCENT)
+        name_entry.pack(side=tk.LEFT, ipady=5)
+
+        # ── Step list (scrollable) ─────────────────────────────────────────────
+        list_outer = tk.Frame(win, bg=BG)
+        list_outer.pack(fill=tk.BOTH, expand=True, padx=18, pady=(4, 0))
+
+        canvas = tk.Canvas(list_outer, bg=BG, highlightthickness=0)
+        vsb    = ttk.Scrollbar(list_outer, orient=tk.VERTICAL, command=canvas.yview)
+        canvas.configure(yscrollcommand=vsb.set)
+        vsb.pack(side=tk.RIGHT, fill=tk.Y)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        rows_frame = tk.Frame(canvas, bg=BG)
+        cwin = canvas.create_window((0, 0), window=rows_frame, anchor="nw")
+
+        def _on_rows_configure(_):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        def _on_canvas_configure(e):
+            canvas.itemconfig(cwin, width=e.width)
+        rows_frame.bind("<Configure>", _on_rows_configure)
+        canvas.bind("<Configure>", _on_canvas_configure)
+
+        row_widgets: List[dict] = []  # per-row widget refs + vars
+
+        def _rebuild_rows():
+            for w in rows_frame.winfo_children():
+                w.destroy()
+            row_widgets.clear()
+
+            for i, step in enumerate(steps):
+                _build_step_row(i, step)
+
+        def _build_step_row(i: int, step: dict):
+            row_bg = SURFACE if i % 2 == 0 else SURFACE2
+            row = tk.Frame(rows_frame, bg=row_bg, pady=8, padx=10)
+            row.pack(fill=tk.X, pady=2)
+            row.columnconfigure(1, weight=1)
+
+            # Index label
+            tk.Label(row, text=f"{i+1:02d}", bg=row_bg, fg=TEXT_DIM,
+                     font=FONT_SMALL, width=3).grid(row=0, column=0,
+                                                     rowspan=2, sticky="n",
+                                                     padx=(0, 8), pady=4)
+
+            # Command type dropdown
+            cmd_var = tk.StringVar(value=step.get("command", CMD_SET_OUTPUTS))
+            cmd_labels_list = [CMD_LABELS[c] for c in ALL_COMMANDS]
+            cmd_map_fwd  = {CMD_LABELS[c]: c for c in ALL_COMMANDS}
+
+            cmd_cb = ttk.Combobox(row, values=cmd_labels_list,
+                                  textvariable=tk.StringVar(
+                                      value=CMD_LABELS.get(step.get("command",
+                                                                     CMD_SET_OUTPUTS),
+                                                           CMD_SET_OUTPUTS)),
+                                  state="readonly", width=20, font=FONT_LABEL)
+            cmd_cb.grid(row=0, column=1, sticky="w", padx=(0, 10))
+
+            # Params frame — rebuilt when command changes
+            params_frame = tk.Frame(row, bg=row_bg)
+            params_frame.grid(row=0, column=2, sticky="w")
+
+            # Delay field (always shown)
+            delay_frame = tk.Frame(row, bg=row_bg)
+            delay_frame.grid(row=0, column=3, sticky="e", padx=(10, 0))
+            tk.Label(delay_frame, text="DELAY ms", bg=row_bg, fg=TEXT_DIM,
+                     font=FONT_SMALL).pack(side=tk.LEFT, padx=(0, 4))
+            delay_var = tk.StringVar(value=str(step.get("delay_ms", 0)))
+            delay_e   = tk.Entry(delay_frame, textvariable=delay_var,
+                                 bg=SURFACE2, fg=TEXT, insertbackground=TEXT,
+                                 relief="flat", bd=0, font=("Menlo", 10), width=6,
+                                 highlightthickness=1, highlightbackground=BORDER,
+                                 highlightcolor=ACCENT)
+            delay_e.pack(side=tk.LEFT, ipady=3)
+
+            # Action buttons
+            btn_frame = tk.Frame(row, bg=row_bg)
+            btn_frame.grid(row=0, column=4, sticky="e", padx=(10, 0))
+
+            rw = {"cmd_var": cmd_var, "delay_var": delay_var,
+                  "params": {}, "step": step}
+            row_widgets.append(rw)
+
+            def _move_up(idx=i):
+                if idx > 0:
+                    steps[idx], steps[idx-1] = steps[idx-1], steps[idx]
+                    _commit_all()
+                    _rebuild_rows()
+
+            def _move_down(idx=i):
+                if idx < len(steps) - 1:
+                    steps[idx], steps[idx+1] = steps[idx+1], steps[idx]
+                    _commit_all()
+                    _rebuild_rows()
+
+            def _delete(idx=i):
+                steps.pop(idx)
+                _rebuild_rows()
+
+            FlatButton(btn_frame, "↑", command=_move_up,  width=2).pack(side=tk.LEFT, padx=1)
+            FlatButton(btn_frame, "↓", command=_move_down, width=2).pack(side=tk.LEFT, padx=1)
+            FlatButton(btn_frame, "✕", command=_delete,   width=2).pack(side=tk.LEFT, padx=1)
+
+            # Build the param widgets for this row
+            def _build_params(cmd_key, frame, step_data, rw_ref):
+                for w in frame.winfo_children():
+                    w.destroy()
+                rw_ref["params"] = {}
+                bg = frame.master.cget("bg")
+
+                if cmd_key == CMD_SET_OUTPUTS:
+                    ch_vars = []
+                    ch_vals = step_data.get("channels", [0]*11)
+                    for ci in range(11):
+                        v = tk.IntVar(value=int(ch_vals[ci]) if ci < len(ch_vals) else 0)
+                        cb = tk.Checkbutton(frame, text=f"{ci}", variable=v,
+                                            bg=bg, fg=TEXT, selectcolor=SURFACE2,
+                                            activebackground=bg, font=FONT_SMALL)
+                        cb.pack(side=tk.LEFT, padx=1)
+                        ch_vars.append(v)
+                    rw_ref["params"]["ch_vars"] = ch_vars
+
+                elif cmd_key == CMD_SET_DAC:
+                    for lbl, key, default in [("DAC1", "dac1", 0),
+                                               ("DAC2", "dac2", 0)]:
+                        tk.Label(frame, text=lbl, bg=bg, fg=TEXT_DIM,
+                                 font=FONT_SMALL).pack(side=tk.LEFT, padx=(6, 2))
+                        v = tk.StringVar(value=str(step_data.get(key, default)))
+                        e = tk.Entry(frame, textvariable=v, bg=SURFACE2, fg=TEXT,
+                                     insertbackground=TEXT, relief="flat", bd=0,
+                                     font=("Menlo", 10), width=6,
+                                     highlightthickness=1,
+                                     highlightbackground=BORDER,
+                                     highlightcolor=ACCENT)
+                        e.pack(side=tk.LEFT, ipady=3, padx=(0, 4))
+                        rw_ref["params"][key] = v
+
+                elif cmd_key == CMD_SET_ADC_INTERVAL:
+                    tk.Label(frame, text="ms", bg=bg, fg=TEXT_DIM,
+                             font=FONT_SMALL).pack(side=tk.LEFT, padx=(0, 4))
+                    v = tk.StringVar(value=str(step_data.get("interval_ms", 500)))
+                    e = tk.Entry(frame, textvariable=v, bg=SURFACE2, fg=TEXT,
+                                 insertbackground=TEXT, relief="flat", bd=0,
+                                 font=("Menlo", 10), width=7,
+                                 highlightthickness=1, highlightbackground=BORDER,
+                                 highlightcolor=ACCENT)
+                    e.pack(side=tk.LEFT, ipady=3)
+                    rw_ref["params"]["interval_ms"] = v
+
+                elif cmd_key == CMD_SET_ADC_STATE:
+                    v = tk.BooleanVar(value=bool(step_data.get("enable", True)))
+                    for lbl, val in [("ON", True), ("OFF", False)]:
+                        tk.Radiobutton(frame, text=lbl, variable=v, value=val,
+                                       bg=bg, fg=TEXT, selectcolor=SURFACE2,
+                                       activebackground=bg,
+                                       font=FONT_SMALL).pack(side=tk.LEFT, padx=4)
+                    rw_ref["params"]["enable"] = v
+
+                elif cmd_key == CMD_SET_OUTPUTS:
+                    pass  # handled above
+
+                # CMD_DELAY has no extra params — delay_ms field is enough
+
+            _build_params(step.get("command", CMD_SET_OUTPUTS),
+                          params_frame, step, rw)
+
+            # When command type changes, reset params
+            def _on_cmd_change(event, idx=i, pf=params_frame, rw_ref=rw,
+                               cb_ref=cmd_cb):
+                new_label = cb_ref.get()
+                new_cmd   = cmd_map_fwd.get(new_label, CMD_SET_OUTPUTS)
+                steps[idx] = default_step(new_cmd)
+                rw_ref["cmd_var"].set(new_cmd)
+                _build_params(new_cmd, pf, steps[idx], rw_ref)
+
+            cmd_cb.bind("<<ComboboxSelected>>", _on_cmd_change)
+
+        def _commit_all():
+            """Read all widget values back into the steps list."""
+            for i, rw in enumerate(row_widgets):
+                if i >= len(steps):
+                    break
+                step = steps[i]
+                cmd  = step.get("command")
+                try:
+                    step["delay_ms"] = int(rw["delay_var"].get())
+                except ValueError:
+                    step["delay_ms"] = 0
+
+                p = rw["params"]
+                if cmd == CMD_SET_OUTPUTS:
+                    ch_vars = p.get("ch_vars", [])
+                    step["channels"] = [v.get() for v in ch_vars]
+                elif cmd == CMD_SET_DAC:
+                    try:
+                        step["dac1"] = int(p["dac1"].get())
+                        step["dac2"] = int(p["dac2"].get())
+                    except (ValueError, KeyError):
+                        pass
+                elif cmd == CMD_SET_ADC_INTERVAL:
+                    try:
+                        step["interval_ms"] = int(p["interval_ms"].get())
+                    except (ValueError, KeyError):
+                        pass
+                elif cmd == CMD_SET_ADC_STATE:
+                    try:
+                        step["enable"] = bool(p["enable"].get())
+                    except (ValueError, KeyError):
+                        pass
+
+        def _add_step():
+            steps.append(default_step(CMD_SET_OUTPUTS))
+            _rebuild_rows()
+            # Scroll to bottom
+            win.after(50, lambda: canvas.yview_moveto(1.0))
+
+        def _save():
+            _commit_all()
+            seq_name = name_var.get().strip()
+            if not seq_name:
+                messagebox.showerror("Error", "Please enter a sequence name.",
+                                     parent=win)
+                return
+            if not steps:
+                messagebox.showerror("Error", "Sequence must have at least one step.",
+                                     parent=win)
+                return
+            save_new_sequence({"name": seq_name, "steps": steps})
+            self._disp_refresh()
+            # Select the just-saved sequence
+            self._disp_seq_var.set(seq_name)
+            self._disp_on_select()
+            win.destroy()
+
+        _rebuild_rows()
+
+        # ── Footer ────────────────────────────────────────────────────────────
+        foot = tk.Frame(win, bg=SURFACE2, pady=10)
+        foot.pack(fill=tk.X, side=tk.BOTTOM)
+
+        FlatButton(foot, "＋  ADD STEP", command=_add_step,
+                   width=14).pack(side=tk.LEFT, padx=16)
+        FlatButton(foot, "SAVE", command=_save,
+                   accent=True, width=10).pack(side=tk.RIGHT, padx=16)
+        FlatButton(foot, "CANCEL", command=win.destroy,
+                   width=10).pack(side=tk.RIGHT, padx=6)
 
     # ── Status pill ────────────────────────────────────────────────────────────
     def _set_status(self, state: str, text: str):

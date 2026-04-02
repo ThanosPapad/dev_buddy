@@ -1,0 +1,111 @@
+{
+  "sequences": [
+    {
+      "name": "Testing_Leds",
+      "steps": [
+        {
+          "command": "set_outputs",
+          "channels": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "delay_ms": 1000
+        },
+        {
+          "command": "set_outputs",
+          "channels": [
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "delay_ms": 1000
+        },
+        {
+          "command": "set_outputs",
+          "channels": [
+            1,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "delay_ms": 1000
+        },
+        {
+          "command": "set_outputs",
+          "channels": [
+            0,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "delay_ms": 500
+        },
+        {
+          "command": "set_outputs",
+          "channels": [
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "delay_ms": 500
+        },
+        {
+          "command": "set_outputs",
+          "channels": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "delay_ms": 500
+        }
+      ]
+    }
+  ]
+}

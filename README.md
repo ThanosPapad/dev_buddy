@@ -3,6 +3,7 @@
 *DevBuddy is a project under development aimed to provide engineers with an easy platform to prototype embeeded systems.*
 
 It provides vast options in voltages to be used to supply the target board, current consumption meassurements for all channels, serial communication options and lastly a PC app to monitor and control it.
+Should be able to be used for the starting point of any custom testing rig
 
 ### File breakdown
 * __DevBuddy_mk1__ - _Hardware files in KiCad_.
@@ -18,11 +19,11 @@ It provides vast options in voltages to be used to supply the target board, curr
 * The APP looks cool as hell!
 * Added support for two 8-Bit DACs for APP and Device
 * Added two controllable voltage channels on PCB, firmware will have to come later
+* A first version of the dispatcher is operational
 ![Alt text](https://github.com/ThanosPapad/dev_buddy/blob/main/Resources/Screenshots/DevBuddy_App_ADC_tab.png)
 
 
 ### Things that need to be done
-* Scheduling files creation and use so that predefined sequences can run easily
 * Hardware and Software for the variable voltage channels control
 * The ability to record sessions of measuremnts, propably saved as CSV files
 * The ability to choose analog channels and view the measurements in a graph would be quite cool as well
