@@ -12,6 +12,7 @@
 #include "in_out_ctrl.h"
 #include "timer_handler.h"
 #include "i2c_drive.h"
+#include "usb_descriptors.h"
 
 connection_status_t conn_stat = IDLE_CONNECTION;
 output_control_t out_status = {0};
@@ -79,6 +80,7 @@ int main() {
     init_inputs();
     init_outputs();
     adc_init_internal();
+    tusb_init();
     serial_init();
 
     multicore_launch_core1(core1_entry);
@@ -90,6 +92,8 @@ int main() {
         handle_uart_rcv();
 
         repeat_every(&led_timer, 1000, toggle_led);
+
+        tud_task();
 
         tight_loop_contents();
     }

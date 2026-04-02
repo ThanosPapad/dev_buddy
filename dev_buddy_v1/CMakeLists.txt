@@ -45,10 +45,12 @@ add_executable(dev_buddy_v1
         src/in_out_ctrl.c
         src/timer_handler.c
         src/i2c_drive.c
+        src/usb_descriptors.c
 )
 
 target_include_directories(dev_buddy_v1 PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/inc
+        ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 # pull in common dependencies
@@ -59,7 +61,10 @@ target_link_libraries(dev_buddy_v1
                 pico_multicore 
                 hardware_adc
                 hardware_i2c
+                tinyusb_device
+                tinyusb_board
                 )
+
 # create map/bin/hex/uf2 file etc.
 pico_add_extra_outputs(dev_buddy_v1)
 
