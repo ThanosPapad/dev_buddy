@@ -46,11 +46,16 @@ add_executable(dev_buddy_v1
         src/timer_handler.c
         src/i2c_drive.c
         src/usb_descriptors.c
+        src/uart_rx_pio.c
 )
 
 target_include_directories(dev_buddy_v1 PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/inc
         ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+pico_generate_pio_header(dev_buddy_v1
+    ${CMAKE_CURRENT_LIST_DIR}/uart_rx.pio
 )
 
 # pull in common dependencies
@@ -63,6 +68,9 @@ target_link_libraries(dev_buddy_v1
                 hardware_i2c
                 tinyusb_device
                 tinyusb_board
+                hardware_pio
+                hardware_clocks
+                hardware_gpio
                 )
 
 # create map/bin/hex/uf2 file etc.

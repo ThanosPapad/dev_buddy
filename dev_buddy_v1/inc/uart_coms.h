@@ -37,8 +37,10 @@ typedef enum
     SET_DAC_VALUE_RESP = 32,
     ADC_TELEMETRY_TRANS = 102,
     INCOMING_HANDSHKE_REQ = 111,
-    OUTGOING_HANDSHAKE_REQ = 112
-
+    OUTGOING_HANDSHAKE_REQ = 112,
+    PIO_UART_CH0_TRANS = 113,
+    PIO_UART_CH1_TRANS = 115,
+    PIO_UART_CH2_TRANS = 117
 } packet_type_t;
 
 typedef enum
@@ -72,5 +74,6 @@ void serial_init(void);
 void handle_uart_rcv(void);
 void transmit_adc_meas();
 void feed_usb_rx(void);
+void transmit_pio_uart_channels(void);
 
 #endif

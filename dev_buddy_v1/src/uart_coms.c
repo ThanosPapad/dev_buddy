@@ -7,6 +7,7 @@
 #include <string.h>
 #include "timer_handler.h"
 #include "tusb.h"
+#include "uart_rx_pio.h"
 
 static int dma_tx_ch;
 static int dma_rx_ch;
@@ -240,5 +241,42 @@ void feed_usb_rx(void)
             else
                 line_index = 0;
         }
+    }
+}
+
+void transmit_pio_uart_channels(void) 
+{
+
+    // Lookup table — maps channel index to its handshake_value
+    static const uint8_t pio_handshake_values[AGG_NUM_CHANNELS] = {
+        PIO_UART_CH0_TRANS,
+        PIO_UART_CH1_TRANS,
+        PIO_UART_CH2_TRANS
+    };
+
+    for (uint8_t ch = 0; ch < AGG_NUM_CHANNELS; ch++) {
+        agg_channel_t *c = &agg_channels[ch];
+
+        if (!c->ready) continue;    // nothing to send on this channel
+
+        // Wait for any previous DMA TX to finish before we touch pack
+        while (dma_channel_is_busy(dma_tx_ch)) {
+            tight_loop_contents();
+        }
+
+        // Build the packet — same pattern as transmit_adc_meas()
+        memcpy(pack.chip_id, id.id, 8);
+        pack.handshake_value  = pio_handshake_values[ch];
+        pack.device_number    = ch;             // channel index so PC knows which line
+        pack.payload_length   = c->len;         // actual byte count (1–100)
+        memset(pack.data, 0, sizeof(pack.data));
+        memcpy(pack.data, c->buf, c->len);      // stuff the PIO bytes in
+
+        // Fire it — uart_dma_write handles both UART DMA and USB CDC
+        uart_dma_write((uint8_t*)&pack, sizeof(pack));
+        uart_dma_write((uint8_t*)"\n", 1);
+
+        // Release this channel's staging buffer for the next fill
+        aggregator_consume(ch);
     }
 }

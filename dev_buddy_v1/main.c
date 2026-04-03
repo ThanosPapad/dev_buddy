@@ -14,7 +14,7 @@
 #include "i2c_drive.h"
 #include "usb_descriptors.h"
 #include "tusb.h"
-
+#include "uart_rx_pio.h"
 
 connection_status_t conn_stat = IDLE_CONNECTION;
 output_control_t out_status = {0};
@@ -88,6 +88,8 @@ int main() {
     adc_init_internal();
     tusb_init();
     serial_init();
+    pio_uart_init_all(PIO_UART_BAUD_DEFAULT);
+    aggregator_init();
 
     multicore_launch_core1(core1_entry);
 
@@ -102,6 +104,9 @@ int main() {
         tud_task();
 
         feed_usb_rx();
+
+        aggregator_update();
+        transmit_pio_uart_channels();
 
         tight_loop_contents();
     }
