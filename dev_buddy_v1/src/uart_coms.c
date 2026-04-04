@@ -199,7 +199,18 @@ void handle_uart_rcv(void) {
                 uart_dma_write((uint8_t*)&pack, sizeof(pack));
                 uart_dma_write((uint8_t*)"\n", 1);
                 break;
-        }
+            case PIO_UART_CH0_REC:
+                pio_uart_tx_send(0, pack.data, sizeof(pack.data));
+                break;
+
+            case PIO_UART_CH1_REC:
+                pio_uart_tx_send(1, pack.data, sizeof(pack.data));
+                break;
+
+            case PIO_UART_CH2_REC:
+                pio_uart_tx_send(2, pack.data, sizeof(pack.data));
+                break;
+            }
 
         // uart_dma_write((uint8_t*)rx_line, strlen(rx_line));
         conn_stat = COM_CONNECTED;

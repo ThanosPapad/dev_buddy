@@ -99,6 +99,8 @@ int main() {
 
         handle_uart_rcv();
 
+        pio_uart_tx_update();
+
         repeat_every(&led_timer, 1000, toggle_led);
 
         tud_task();

@@ -330,3 +330,36 @@ def _strip_terminator(data: bytes) -> bytes:
     if data and data[-1] == 0x0A:
         return data[:-1]
     return data
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PIO UART channel send packets (host → device)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def create_pio_rec_packet(device_id: bytes, rec_handshake: int, data: bytes) -> bytes:
+    """
+    Build a PIO_UART_CHx_REC packet (handshake_value = 114 / 116 / 118).
+
+    The data payload is stuffed into pack.data[0..99].  Any excess beyond
+    100 bytes must be truncated by the caller before passing here.
+
+    Args:
+        device_id:      8-byte chip ID from the handshake response.
+        rec_handshake:  114 / 116 / 118  (CH0 / CH1 / CH2 REC).
+        data:           Up to 100 bytes to send to the PIO channel.
+
+    Returns:
+        112-byte packet ready to write to the serial port (append \\x0A).
+    """
+    if len(device_id) != CHIP_ID_SIZE:
+        raise ValueError(f"device_id must be {CHIP_ID_SIZE} bytes long")
+
+    data_array = bytearray(100)
+    data_array[:len(data)] = data[:100]
+
+    packet = struct.pack('<8B B B 100B H',
+                         *device_id,
+                         rec_handshake,
+                         DEVICE_NUMBER,
+                         *data_array,
+                         PAYLOAD_LENGTH)
+    return packet

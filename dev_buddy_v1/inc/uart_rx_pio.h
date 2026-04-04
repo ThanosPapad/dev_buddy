@@ -8,6 +8,7 @@
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 #include "uart_rx.pio.h"
+#include "uart_tx.pio.h"
 #include "ring_buffer.h"
 
 // ── Configuration ──────────────────────────────────────────────
@@ -16,21 +17,37 @@
 
 // GPIO pin assignments — adjust freely
 #define PIO_UART0_RX_PIN   6
+#define PIO_UART0_TX_PIN   7
 #define PIO_UART1_RX_PIN   8
+#define PIO_UART1_TX_PIN   9
 #define PIO_UART2_RX_PIN   10
+#define PIO_UART2_TX_PIN   11
 
 #define PIO_UART_INSTANCE  pio0
+#define PIO_UART_TX_INSTANCE  pio1
 
 #define AGG_BUF_SIZE        100         // bytes per channel staging buffer
+#define PIO_TX_BUF_SIZE     100
 #define AGG_NUM_CHANNELS    3
 #define AGG_TIMEOUT_MS      50          // flush partial buffer after this many ms
 // ───────────────────────────────────────────────────────────────
-
+// ── RX instance ─────────────────────────────────────────────────
 typedef struct {
     PIO     pio;
     uint    sm;
     uint    rx_pin;
 } pio_uart_inst_t;
+
+// ── TX instance ─────────────────────────────────────────────────
+typedef struct {
+    PIO      pio;
+    uint     sm;
+    uint     tx_pin;
+    uint8_t  buf[PIO_TX_BUF_SIZE];  // bytes to transmit
+    uint8_t  len;                   // how many bytes to send
+    uint8_t  pos;                   // current send position
+    volatile bool busy;             // true = TX in progress
+} pio_uart_tx_inst_t;
 
 // Per-channel staging buffer + state
 typedef struct {
@@ -46,6 +63,7 @@ extern agg_channel_t agg_channels[AGG_NUM_CHANNELS];
 
 extern pio_uart_inst_t pio_uarts[3];
 extern ring_buffer_t pio_uart_rx_buf[3];
+extern pio_uart_tx_inst_t  pio_tx[3];
 
 // ── API ─────────────────────────────────────────────────────────
 void    pio_uart_init_all(uint32_t baud_rate);
@@ -57,5 +75,8 @@ void check_pio_buffers ();
 void aggregator_init(void);
 void aggregator_update(void);
 void aggregator_consume(uint8_t channel);
+bool pio_uart_tx_send(uint8_t channel, const uint8_t *data, uint8_t len);
+void pio_uart_tx_update(void);
+bool pio_uart_tx_busy(uint8_t channel);
 
 #endif

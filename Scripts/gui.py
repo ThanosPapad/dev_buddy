@@ -28,13 +28,18 @@ from packet_handler import (
     # DAC
     create_set_dac_packet,
     verify_dac_response,
+    # PIO UART
+    create_pio_rec_packet,
 )
 from config import (DEFAULT_BAUDRATE, RESPONSE_TIMEOUT,
                     WINDOW_WIDTH, WINDOW_HEIGHT, INPUT_UPDATE_INTERVAL,
                     ADC_CHANNEL_COUNT, ADC_TELEMETRY_TRANS,
                     SET_ADC_INTERVAL_RESP, SET_ADC_INTERVAL_STATE_RESP,
                     RESPONSE_HANDSHAKE_VALUE, INPUTS_RESPONSE_HANDSHAKE_VALUE,
-                    SET_DAC_VALUE_RESP)
+                    SET_DAC_VALUE_RESP,
+                    PIO_UART_CH0_TRANS, PIO_UART_CH1_TRANS, PIO_UART_CH2_TRANS,
+                    PIO_UART_CH0_REC, PIO_UART_CH1_REC, PIO_UART_CH2_REC,
+                    PIO_UART_HANDSHAKE_VALUES, PIO_UART_REC_VALUES)
 
 # ── Palette ────────────────────────────────────────────────────────────────────
 BG          = "#0d0f14"
@@ -334,6 +339,10 @@ class SerialConnectionApp:
         self.device_id          = None
         self._adc_enabled       = False
 
+        # COM channel log widgets — populated by _build_comms_tab
+        self._com_logs: List[tk.Text] = []   # index 0/1/2 → COM1/2/3
+        self._com_hex_mode = tk.BooleanVar(value=False)  # False = string, True = hex
+
         # Single reader thread — owns the serial port exclusively.
         # Response packets are routed via a Queue to whichever worker is
         # waiting for them.  ADC telemetry is dispatched directly to the UI.
@@ -447,6 +456,7 @@ class SerialConnectionApp:
         self._build_adc_tab(nb)
         self._build_dac_tab(nb)
         self._build_dispatcher_tab(nb)
+        self._build_comms_tab(nb)
 
     # ── Log tab ────────────────────────────────────────────────────────────────
     def _build_log_tab(self, nb):
@@ -1288,6 +1298,272 @@ class SerialConnectionApp:
         FlatButton(foot, "CANCEL", command=win.destroy,
                    width=10).pack(side=tk.RIGHT, padx=6)
 
+    # ── Comms tab ──────────────────────────────────────────────────────────────
+    def _build_comms_tab(self, nb):
+        outer = tk.Frame(nb, bg=SURFACE)
+        outer.columnconfigure(0, weight=1)
+        outer.rowconfigure(1, weight=1)
+        nb.add(outer, text="  COMMS  ")
+
+        # ── Top control bar (shared across all COM sub-tabs) ──────────────────
+        ctrl = tk.Frame(outer, bg=SURFACE2, pady=10, padx=18)
+        ctrl.grid(row=0, column=0, sticky="ew")
+
+        tk.Label(ctrl, text="PIO UART CHANNELS", bg=SURFACE2, fg=TEXT_DIM,
+                 font=("Helvetica Neue", 8, "bold")).pack(side=tk.LEFT,
+                                                           padx=(0, 24))
+
+        # HEX / STRING toggle
+        tk.Label(ctrl, text="DISPLAY MODE", bg=SURFACE2, fg=TEXT_DIM,
+                 font=FONT_SMALL).pack(side=tk.LEFT, padx=(0, 8))
+
+        str_rb = tk.Radiobutton(ctrl, text="STRING",
+                                variable=self._com_hex_mode, value=False,
+                                bg=SURFACE2, fg=TEXT, selectcolor=BG,
+                                activebackground=SURFACE2,
+                                font=("Helvetica Neue", 9, "bold"),
+                                command=self._com_redisplay)
+        str_rb.pack(side=tk.LEFT, padx=(0, 4))
+
+        hex_rb = tk.Radiobutton(ctrl, text="HEX",
+                                variable=self._com_hex_mode, value=True,
+                                bg=SURFACE2, fg=TEXT, selectcolor=BG,
+                                activebackground=SURFACE2,
+                                font=("Helvetica Neue", 9, "bold"),
+                                command=self._com_redisplay)
+        hex_rb.pack(side=tk.LEFT, padx=(0, 0))
+
+        # ── Sub-notebook for COM1 / COM2 / COM3 ──────────────────────────────
+        sub_nb = ttk.Notebook(outer)
+        sub_nb.grid(row=1, column=0, sticky="nsew", padx=0, pady=0)
+        outer.rowconfigure(1, weight=1)
+
+        self._com_logs.clear()
+        # Store raw data payloads per channel for redisplay on mode switch
+        # Each entry is (ts, data_bytes, direction) where direction is "rx" or "tx"
+        self._com_raw: List[List[tuple]] = [[], [], []]
+        # Send entry StringVars — one per channel
+        self._com_send_vars: List[tk.StringVar] = []
+
+        for ch_idx, label in enumerate(["  COM1  ", "  COM2  ", "  COM3  "]):
+            ch_outer = tk.Frame(sub_nb, bg=SURFACE)
+            ch_outer.columnconfigure(0, weight=1)
+            ch_outer.rowconfigure(0, weight=1)
+            sub_nb.add(ch_outer, text=label)
+
+            # ── Log area ──────────────────────────────────────────────────────
+            inner = tk.Frame(ch_outer, bg=SURFACE, padx=12, pady=12)
+            inner.grid(row=0, column=0, sticky="nsew")
+            inner.columnconfigure(0, weight=1)
+            inner.rowconfigure(0, weight=1)
+            ch_outer.rowconfigure(0, weight=1)
+
+            log = tk.Text(inner, wrap=tk.NONE,
+                          font=FONT_MONO,
+                          bg="#080a0e", fg="#6a7a8a",
+                          insertbackground=TEXT,
+                          selectbackground=ACCENT_DIM,
+                          relief="flat", bd=0,
+                          state=tk.DISABLED)
+            log.grid(row=0, column=0, sticky="nsew")
+            log.tag_config("ts",       foreground=SENT_COL)
+            log.tag_config("data",     foreground=RECV_COL)
+            log.tag_config("sent_ts",  foreground=ACCENT)
+            log.tag_config("sent_data",foreground=SENT_COL)
+
+            vsb = ttk.Scrollbar(inner, orient=tk.VERTICAL,   command=log.yview)
+            vsb.grid(row=0, column=1, sticky="ns")
+            hsb = ttk.Scrollbar(inner, orient=tk.HORIZONTAL, command=log.xview)
+            hsb.grid(row=1, column=0, sticky="ew")
+            log.config(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+
+            # ── Send bar ──────────────────────────────────────────────────────
+            send_bar = tk.Frame(ch_outer, bg=SURFACE2, pady=8, padx=12)
+            send_bar.grid(row=1, column=0, sticky="ew")
+            send_bar.columnconfigure(1, weight=1)
+
+            tk.Label(send_bar, text="SEND", bg=SURFACE2, fg=TEXT_DIM,
+                     font=FONT_SMALL).grid(row=0, column=0, padx=(0, 8))
+
+            send_var = tk.StringVar()
+            self._com_send_vars.append(send_var)
+
+            send_entry = tk.Entry(send_bar, textvariable=send_var,
+                                  bg=SURFACE, fg=TEXT,
+                                  insertbackground=TEXT,
+                                  relief="flat", bd=0,
+                                  font=("Menlo", 10),
+                                  highlightthickness=1,
+                                  highlightbackground=BORDER,
+                                  highlightcolor=ACCENT)
+            send_entry.grid(row=0, column=1, sticky="ew", ipady=5, padx=(0, 8))
+
+            # Bind Enter key to send
+            send_entry.bind("<Return>",
+                            lambda e, idx=ch_idx: self._com_send(idx))
+
+            FlatButton(send_bar, "SEND",
+                       command=lambda idx=ch_idx: self._com_send(idx),
+                       accent=True, width=8).grid(row=0, column=2, padx=(0, 8))
+
+            # ── Footer (clear + hint) ─────────────────────────────────────────
+            foot = tk.Frame(ch_outer, bg=SURFACE2, pady=6, padx=12)
+            foot.grid(row=2, column=0, sticky="ew")
+            ch_name = label.strip()
+            FlatButton(foot, "CLEAR",
+                       command=lambda idx=ch_idx: self._com_clear(idx),
+                       width=8).pack(side=tk.RIGHT)
+            tk.Label(foot,
+                     text=f"{ch_name}  ·  amber = received  ·  teal = sent  ·  "
+                           "mode applies to both send and display",
+                     bg=SURFACE2, fg=TEXT_DIM,
+                     font=FONT_SMALL).pack(side=tk.LEFT)
+
+            self._com_logs.append(log)
+
+    def _route_pio_packet(self, frame: bytes):
+        """
+        Called from the reader thread (via root.after) when a PIO UART
+        packet arrives.  Extracts the data field and appends it to the
+        correct COM sub-tab log.
+
+        Packet layout (same as handshake_packet_t, no terminator):
+          [0:8]   chip_id          8 bytes
+          [8]     handshake_value  1 byte  → 113 / 115 / 117
+          [9]     device_number    1 byte  (channel index echoed)
+          [10:110] data            100 bytes
+          [110:112] payload_length  uint16 LE
+        """
+        if len(frame) < 112:
+            return
+        hv      = frame[8]
+        ch_idx  = PIO_UART_HANDSHAKE_VALUES.get(hv)
+        if ch_idx is None:
+            return
+        data_bytes = frame[10:110]   # full 100-byte data field
+        ts         = time.strftime("%H:%M:%S")
+        # Store raw for potential redisplay
+        self._com_raw[ch_idx].append((ts, data_bytes, "rx"))
+        self.root.after(0, lambda i=ch_idx, t=ts, d=data_bytes:
+                        self._append_com_log(i, t, d))
+
+    def _append_com_log(self, ch_idx: int, ts: str, data: bytes):
+        if ch_idx >= len(self._com_logs):
+            return
+        log = self._com_logs[ch_idx]
+        rendered = self._com_render(data)
+        log.config(state=tk.NORMAL)
+        if log.get("1.0", tk.END).strip():
+            log.insert(tk.END, "\n")
+        log.insert(tk.END, f"[{ts}]  ", "ts")
+        log.insert(tk.END, rendered,    "data")
+        log.see(tk.END)
+        log.config(state=tk.DISABLED)
+
+    def _com_render(self, data: bytes) -> str:
+        """Render data bytes as hex dump or ASCII string per current mode."""
+        if self._com_hex_mode.get():
+            # Hex dump — 16 bytes per line, same style as the main log
+            lines = []
+            for i in range(0, len(data), 16):
+                chunk = data[i:i + 16]
+                h = " ".join(f"{b:02X}" for b in chunk)
+                a = "".join(chr(b) if 32 <= b <= 126 else "·" for b in chunk)
+                lines.append(f"  {i:04X}  {h:<48}  {a}")
+            return "\n".join(lines)
+        else:
+            # String mode — printable ASCII, dots for non-printable, strip trailing nulls
+            stripped = data.rstrip(b"\x00")
+            return "".join(chr(b) if 32 <= b <= 126 else "·" for b in stripped)
+
+    def _com_clear(self, ch_idx: int):
+        if ch_idx >= len(self._com_logs):
+            return
+        self._com_raw[ch_idx].clear()
+        log = self._com_logs[ch_idx]
+        log.config(state=tk.NORMAL)
+        log.delete("1.0", tk.END)
+        log.config(state=tk.DISABLED)
+
+    def _com_send(self, ch_idx: int):
+        """Parse the send field and transmit a PIO_UART_CHx_REC packet."""
+        if not self._check_ready():
+            return
+
+        raw_text = self._com_send_vars[ch_idx].get()
+        if not raw_text:
+            return
+
+        # Parse input according to current display mode
+        if self._com_hex_mode.get():
+            # Hex mode: space-separated hex bytes e.g. "48 65 6C 6C 6F"
+            try:
+                data = bytes(int(b, 16) for b in raw_text.split())
+            except ValueError:
+                messagebox.showerror(
+                    "Error",
+                    "Invalid hex input. Use space-separated bytes e.g.  48 65 6C")
+                return
+        else:
+            # String mode: encode as ASCII
+            data = raw_text.encode("ascii", errors="replace")
+
+        # Warn and truncate if over 100 bytes
+        if len(data) > 100:
+            messagebox.showwarning(
+                "Truncated",
+                f"Input is {len(data)} bytes — truncated to 100 bytes (data field limit).")
+            data = data[:100]
+
+        rec_hv = PIO_UART_REC_VALUES[ch_idx]   # 114 / 116 / 118
+
+        try:
+            pkt = create_pio_rec_packet(self.device_id, rec_hv, data)
+            self.serial_connection.write(pkt + b"\x0A")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to send packet:\n{e}")
+            return
+
+        # Log to the main LOG tab
+        self.log_sent_data(pkt + b"\x0A")
+
+        # Echo the sent data into the COM log and store for redisplay
+        ts = time.strftime("%H:%M:%S")
+        self._com_raw[ch_idx].append((ts, data, "tx"))
+        rendered = self._com_render(data)
+        log      = self._com_logs[ch_idx]
+        log.config(state=tk.NORMAL)
+        if log.get("1.0", tk.END).strip():
+            log.insert(tk.END, "\n")
+        log.insert(tk.END, f"[{ts}] ▶  ", "sent_ts")
+        log.insert(tk.END, rendered,       "sent_data")
+        log.see(tk.END)
+        log.config(state=tk.DISABLED)
+
+        # Clear the send field after a successful send
+        self._com_send_vars[ch_idx].set("")
+
+    def _com_redisplay(self):
+        """Redraw all COM logs from raw storage when display mode is toggled."""
+        for ch_idx, log in enumerate(self._com_logs):
+            log.config(state=tk.NORMAL)
+            log.delete("1.0", tk.END)
+            first = True
+            for entry in self._com_raw[ch_idx]:
+                ts, data, direction = entry
+                rendered = self._com_render(data)
+                if not first:
+                    log.insert(tk.END, "\n")
+                if direction == "tx":
+                    log.insert(tk.END, f"[{ts}] ▶  ", "sent_ts")
+                    log.insert(tk.END, rendered,       "sent_data")
+                else:
+                    log.insert(tk.END, f"[{ts}]  ",   "ts")
+                    log.insert(tk.END, rendered,       "data")
+                first = False
+            log.see(tk.END)
+            log.config(state=tk.DISABLED)
+
     # ── Status pill ────────────────────────────────────────────────────────────
     def _set_status(self, state: str, text: str):
         colors = {"offline": DANGER, "waiting": WARN,
@@ -1340,11 +1616,23 @@ class SerialConnectionApp:
             self.serial_connection = None
         self.is_connected = False
         self.device_id    = None
+
+        # Drain any stale frames left in the queue from the previous session
+        # so the next handshake worker never picks up an old response.
+        while not self._response_queue.empty():
+            try:
+                self._response_queue.get_nowait()
+            except Exception:
+                break
+
+        # Reset all UI controls to their pre-connection state
         self._connect_btn.config(text="CONNECT")
+        self._connect_btn.set_enabled(True)
         self._handshake_btn.set_enabled(False)
         self._set_btn.set_enabled(False)
         self._read_btn.set_enabled(False)
         self._adc_toggle.set_enabled(False)
+        self._adc_toggle.set_state(False)
         self._apply_interval_btn.set_enabled(False)
         self._dac_set_btn.set_enabled(False)
         self._set_status("offline", "OFFLINE")
@@ -1555,6 +1843,10 @@ class SerialConnectionApp:
                             self.root.after(0,
                                 lambda ch=channels, t=ts:
                                     self._handle_adc_telemetry(ch, t))
+                    elif hv in PIO_UART_HANDSHAKE_VALUES:
+                        # PIO UART channel data — route to the Comms tab
+                        self.root.after(0,
+                            lambda f=frame: self._route_pio_packet(f))
                     else:
                         # Everything else is a response to a command we sent.
                         # Put it on the queue so the waiting worker can take it.

@@ -109,9 +109,9 @@ typedef enum {
 
 // Multiplexer pins declarations
 typedef enum {
-    MUX_S0_PIN = 10,
-    MUX_S1_PIN = 11,
-    MUX_S2_PIN = 12
+    MUX_S0_PIN = 18,
+    MUX_S1_PIN = 19,
+    MUX_S2_PIN = 20
 } mux_pins_t;
 
 // Mux channel decrarations

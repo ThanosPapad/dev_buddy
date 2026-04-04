@@ -57,6 +57,9 @@ target_include_directories(dev_buddy_v1 PRIVATE
 pico_generate_pio_header(dev_buddy_v1
     ${CMAKE_CURRENT_LIST_DIR}/uart_rx.pio
 )
+pico_generate_pio_header(dev_buddy_v1
+    ${CMAKE_CURRENT_LIST_DIR}/uart_tx.pio
+)
 
 # pull in common dependencies
 target_link_libraries(dev_buddy_v1 
@@ -71,6 +74,7 @@ target_link_libraries(dev_buddy_v1
                 hardware_pio
                 hardware_clocks
                 hardware_gpio
+                hardware_irq
                 )
 
 # create map/bin/hex/uf2 file etc.

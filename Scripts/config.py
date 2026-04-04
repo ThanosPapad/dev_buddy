@@ -20,6 +20,22 @@ ADC_TELEMETRY_TRANS          = 102  # 0x66 — unsolicited ADC telemetry frame
 SET_DAC_VALUE_REQ            = 31   # 0x1F — set DAC1 and DAC2 output values
 SET_DAC_VALUE_RESP           = 32   # 0x20 — device confirms new DAC values
 
+# PIO UART channel transmit packet types (device → host)
+PIO_UART_CH0_TRANS           = 113  # 0x71 — data from PIO UART channel 0 (COM1)
+PIO_UART_CH1_TRANS           = 115  # 0x73 — data from PIO UART channel 1 (COM2)
+PIO_UART_CH2_TRANS           = 117  # 0x75 — data from PIO UART channel 2 (COM3)
+
+# PIO UART channel receive packet types (host → device)
+PIO_UART_CH0_REC             = 114  # 0x72 — send data to PIO UART channel 0 (COM1)
+PIO_UART_CH1_REC             = 116  # 0x74 — send data to PIO UART channel 1 (COM2)
+PIO_UART_CH2_REC             = 118  # 0x76 — send data to PIO UART channel 2 (COM3)
+
+# Lookup: handshake value → COM channel index (0-based)
+PIO_UART_HANDSHAKE_VALUES    = {113: 0, 115: 1, 117: 2}
+
+# Lookup: COM channel index → REC handshake value
+PIO_UART_REC_VALUES          = {0: 114, 1: 116, 2: 118}
+
 # Number of ADC channels exposed by channel_voltages_t
 ADC_CHANNEL_COUNT = 8
 

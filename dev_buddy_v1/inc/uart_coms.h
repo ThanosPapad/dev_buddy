@@ -39,8 +39,11 @@ typedef enum
     INCOMING_HANDSHKE_REQ = 111,
     OUTGOING_HANDSHAKE_REQ = 112,
     PIO_UART_CH0_TRANS = 113,
+    PIO_UART_CH0_REC = 114,
     PIO_UART_CH1_TRANS = 115,
-    PIO_UART_CH2_TRANS = 117
+    PIO_UART_CH1_REC = 116,
+    PIO_UART_CH2_TRANS = 117,
+    PIO_UART_CH2_REC = 118
 } packet_type_t;
 
 typedef enum
