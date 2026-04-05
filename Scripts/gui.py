@@ -13,6 +13,8 @@ from dispatcher import (
     ALL_COMMANDS, CMD_LABELS, CMD_DEFAULTS,
     CMD_SET_OUTPUTS, CMD_SET_DAC, CMD_SET_ADC_INTERVAL,
     CMD_SET_ADC_STATE, CMD_DELAY,
+    CMD_COM_SEND, CMD_COM_RECEIVE,
+    COM_CHANNEL_NAMES,
     SequenceRunner,
 )
 from packet_handler import (
@@ -875,8 +877,8 @@ class SerialConnectionApp:
     def _open_execution_window(self, seq: dict, loops: int):
         win = tk.Toplevel(self.root)
         win.title(f"Running: {seq.get('name', '')}")
-        win.geometry("640x480")
-        win.minsize(540, 360)
+        win.geometry("680x560")
+        win.minsize(540, 400)
         win.configure(bg=BG)
         win.grab_set()
 
@@ -888,16 +890,16 @@ class SerialConnectionApp:
         tk.Label(hdr, text=seq.get("name", "").upper(),
                  bg=SURFACE2, fg=TEXT,
                  font=("Helvetica Neue", 11, "bold")).pack(side=tk.LEFT)
-        self._exec_loop_lbl = tk.Label(hdr, text=f"Loop 1 / {loops}",
-                                        bg=SURFACE2, fg=TEXT_DIM, font=FONT_SMALL)
-        self._exec_loop_lbl.pack(side=tk.RIGHT)
+        exec_loop_lbl = tk.Label(hdr, text=f"Loop 1 / {loops}",
+                                  bg=SURFACE2, fg=TEXT_DIM, font=FONT_SMALL)
+        exec_loop_lbl.pack(side=tk.RIGHT)
 
-        # ── Step cards ────────────────────────────────────────────────────────
+        # ── Scrollable content ────────────────────────────────────────────────
         canvas = tk.Canvas(win, bg=BG, highlightthickness=0)
         vsb    = ttk.Scrollbar(win, orient=tk.VERTICAL, command=canvas.yview)
         canvas.configure(yscrollcommand=vsb.set)
         vsb.pack(side=tk.RIGHT, fill=tk.Y)
-        canvas.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
+        canvas.pack(fill=tk.BOTH, expand=True)
 
         cards_frame = tk.Frame(canvas, bg=BG)
         canvas_win  = canvas.create_window((0, 0), window=cards_frame, anchor="nw")
@@ -909,89 +911,105 @@ class SerialConnectionApp:
         cards_frame.bind("<Configure>", _on_frame_configure)
         canvas.bind("<Configure>", _on_canvas_configure)
 
-        # Build one row per step
-        step_frames = []   # (outer_frame, status_label, msg_label)
-        for i, step in enumerate(steps):
-            row = tk.Frame(cards_frame, bg=SURFACE2, pady=8, padx=14)
-            row.pack(fill=tk.X, padx=14, pady=4)
-
-            num_lbl = tk.Label(row, text=f"{i+1:02d}",
-                               bg=SURFACE2, fg=TEXT_DIM, font=FONT_SMALL, width=3)
-            num_lbl.pack(side=tk.LEFT)
-
-            cmd_lbl = tk.Label(row, text=step_label(step),
-                               bg=SURFACE2, fg=TEXT, font=FONT_UI, anchor="w")
-            cmd_lbl.pack(side=tk.LEFT, padx=(8, 0), fill=tk.X, expand=True)
-
-            status_lbl = tk.Label(row, text="WAITING",
-                                   bg=SURFACE2, fg=TEXT_DIM,
-                                   font=("Helvetica Neue", 8, "bold"), width=10)
-            status_lbl.pack(side=tk.RIGHT, padx=(8, 0))
-
-            msg_lbl = tk.Label(row, text="",
-                               bg=SURFACE2, fg=TEXT_DIM, font=FONT_SMALL,
-                               anchor="e", width=28)
-            msg_lbl.pack(side=tk.RIGHT)
-
-            step_frames.append((row, status_lbl, msg_lbl))
-
         # ── Footer ────────────────────────────────────────────────────────────
         foot = tk.Frame(win, bg=SURFACE2, pady=10)
         foot.pack(fill=tk.X, side=tk.BOTTOM)
 
-        exec_status = tk.Label(foot, text="RUNNING…",
+        exec_status = tk.Label(foot, text="RUNNING...",
                                bg=SURFACE2, fg=WARN,
                                font=("Helvetica Neue", 9, "bold"))
         exec_status.pack(side=tk.LEFT, padx=16)
 
-        stop_btn = FlatButton(foot, "■  STOP", width=10,
+        stop_btn = FlatButton(foot, "STOP", width=10,
                               command=lambda: runner.stop())
         stop_btn.pack(side=tk.RIGHT, padx=16)
 
-        # Colour helpers
         _NEUTRAL = SURFACE2
-        _RUN_BG  = "#2a2500"   # dark amber
-        _OK_BG   = "#0a2a1a"   # dark green
-        _FAIL_BG = "#2a0a0a"   # dark red
+        _RUN_BG  = "#2a2500"
+        _OK_BG   = "#0a2a1a"
+        _FAIL_BG = "#2a0a0a"
 
-        def _reset_cards():
-            for row, slbl, mlbl in step_frames:
-                row.config(bg=_NEUTRAL)
-                for w in row.winfo_children():
-                    w.config(bg=_NEUTRAL)
-                slbl.config(text="WAITING", fg=TEXT_DIM)
-                mlbl.config(text="")
+        # Cards for the currently executing loop — rebuilt each loop
+        current_step_frames: List = []
+
+        def _colour_children(widget, bg):
+            try:
+                widget.config(bg=bg)
+            except Exception:
+                pass
+            for child in widget.winfo_children():
+                _colour_children(child, bg)
+
+        def _build_loop_cards(loop_num, total):
+            current_step_frames.clear()
+            # Loop separator
+            sep = tk.Frame(cards_frame, bg=BORDER, pady=6, padx=14)
+            sep.pack(fill=tk.X, padx=8, pady=(10, 2))
+            tk.Label(sep, text=f"LOOP {loop_num} / {total}",
+                     bg=BORDER, fg=TEXT_DIM,
+                     font=("Helvetica Neue", 8, "bold")).pack(side=tk.LEFT)
+
+            for i, step in enumerate(steps):
+                row = tk.Frame(cards_frame, bg=_NEUTRAL, pady=6, padx=14)
+                row.pack(fill=tk.X, padx=14, pady=3)
+                row.columnconfigure(0, weight=1)
+
+                top = tk.Frame(row, bg=_NEUTRAL)
+                top.grid(row=0, column=0, sticky="ew")
+                top.columnconfigure(1, weight=1)
+
+                tk.Label(top, text=f"{i+1:02d}",
+                         bg=_NEUTRAL, fg=TEXT_DIM,
+                         font=FONT_SMALL, width=3).grid(row=0, column=0, sticky="w")
+                tk.Label(top, text=step_label(step),
+                         bg=_NEUTRAL, fg=TEXT, font=FONT_UI,
+                         anchor="w").grid(row=0, column=1, sticky="ew", padx=(8, 0))
+                status_lbl = tk.Label(top, text="WAITING",
+                                       bg=_NEUTRAL, fg=TEXT_DIM,
+                                       font=("Helvetica Neue", 8, "bold"), width=10)
+                status_lbl.grid(row=0, column=2, sticky="e", padx=(8, 0))
+
+                data_lbl = tk.Label(row, text="",
+                                    bg=_NEUTRAL, fg=ACCENT,
+                                    font=FONT_MONO, anchor="w",
+                                    wraplength=580, justify="left")
+                data_lbl.grid(row=1, column=0, sticky="ew", padx=(24, 0), pady=(2, 0))
+                data_lbl.grid_remove()
+
+                current_step_frames.append((row, status_lbl, data_lbl))
+
+            win.after(50, lambda: canvas.yview_moveto(1.0))
 
         def _on_loop_start(loop_num, total):
-            win.after(0, lambda: self._exec_loop_lbl.config(
-                text=f"Loop {loop_num} / {total}"))
-            win.after(0, _reset_cards)
+            def _upd():
+                exec_loop_lbl.config(text=f"Loop {loop_num} / {total}")
+                _build_loop_cards(loop_num, total)
+            win.after(0, _upd)
 
         def _on_step_start(idx):
-            if idx >= len(step_frames):
-                return
-            row, slbl, mlbl = step_frames[idx]
             def _upd():
-                row.config(bg=_RUN_BG)
-                for w in row.winfo_children():
-                    w.config(bg=_RUN_BG)
-                slbl.config(text="RUNNING", fg=WARN)
-                canvas.yview_moveto(idx / max(len(steps), 1))
+                if idx >= len(current_step_frames):
+                    return
+                row, slbl, data_lbl = current_step_frames[idx]
+                _colour_children(row, _RUN_BG)
+                slbl.config(text="RUNNING", fg=WARN, bg=_RUN_BG)
+                canvas.yview_moveto(1.0)
             win.after(0, _upd)
 
         def _on_step_done(idx, ok, msg):
-            if idx >= len(step_frames):
-                return
-            row, slbl, mlbl = step_frames[idx]
-            bg    = _OK_BG   if ok else _FAIL_BG
-            fg    = ACCENT   if ok else DANGER
-            txt   = "OK"     if ok else "FAILED"
             def _upd():
-                row.config(bg=bg)
-                for w in row.winfo_children():
-                    w.config(bg=bg)
-                slbl.config(text=txt, fg=fg)
-                mlbl.config(text=msg, fg=fg)
+                if idx >= len(current_step_frames):
+                    return
+                row, slbl, data_lbl = current_step_frames[idx]
+                bg  = _OK_BG   if ok else _FAIL_BG
+                fg  = ACCENT   if ok else DANGER
+                txt = "OK"     if ok else "FAILED"
+                _colour_children(row, bg)
+                slbl.config(text=txt, fg=fg, bg=bg)
+                if msg:
+                    data_lbl.config(text=msg, fg=fg, bg=bg)
+                    data_lbl.grid()
+                canvas.yview_moveto(1.0)
             win.after(0, _upd)
 
         def _on_finished(aborted):
@@ -1013,10 +1031,12 @@ class SerialConnectionApp:
             on_step_done       = _on_step_done,
             on_loop_start      = _on_loop_start,
             on_finished        = _on_finished,
+            hex_mode           = self._com_hex_mode.get(),
+            render_data        = self._com_render,
+            route_pio          = self._route_pio_packet,
         )
         runner.start()
 
-        # If user closes the window, stop the runner
         win.protocol("WM_DELETE_WINDOW", lambda: (runner.stop(), win.destroy()))
 
     # ── Sequence builder / editor window ──────────────────────────────────────
@@ -1024,8 +1044,8 @@ class SerialConnectionApp:
         win = tk.Toplevel(self.root)
         title = "Edit Sequence" if existing else "Create Sequence"
         win.title(title)
-        win.geometry("820x580")
-        win.minsize(700, 440)
+        win.geometry("1100x680")
+        win.minsize(900, 500)
         win.configure(bg=BG)
         win.grab_set()
 
@@ -1106,7 +1126,7 @@ class SerialConnectionApp:
                                       value=CMD_LABELS.get(step.get("command",
                                                                      CMD_SET_OUTPUTS),
                                                            CMD_SET_OUTPUTS)),
-                                  state="readonly", width=20, font=FONT_LABEL)
+                                  state="readonly", width=22, font=FONT_LABEL)
             cmd_cb.grid(row=0, column=1, sticky="w", padx=(0, 10))
 
             # Params frame — rebuilt when command changes
@@ -1209,8 +1229,51 @@ class SerialConnectionApp:
                                        font=FONT_SMALL).pack(side=tk.LEFT, padx=4)
                     rw_ref["params"]["enable"] = v
 
-                elif cmd_key == CMD_SET_OUTPUTS:
-                    pass  # handled above
+                elif cmd_key == CMD_COM_SEND:
+                    # Channel selector
+                    tk.Label(frame, text="CH", bg=bg, fg=TEXT_DIM,
+                             font=FONT_SMALL).pack(side=tk.LEFT, padx=(0, 4))
+                    ch_v = tk.StringVar(value=COM_CHANNEL_NAMES[step_data.get("channel", 0)])
+                    ch_cb = ttk.Combobox(frame, values=COM_CHANNEL_NAMES,
+                                         textvariable=ch_v,
+                                         state="readonly", width=6, font=FONT_LABEL)
+                    ch_cb.pack(side=tk.LEFT, padx=(0, 10))
+                    rw_ref["params"]["channel_var"] = ch_v
+                    # Message field
+                    tk.Label(frame, text="MSG", bg=bg, fg=TEXT_DIM,
+                             font=FONT_SMALL).pack(side=tk.LEFT, padx=(0, 4))
+                    msg_v = tk.StringVar(value=step_data.get("message", ""))
+                    msg_e = tk.Entry(frame, textvariable=msg_v, bg=SURFACE2, fg=TEXT,
+                                     insertbackground=TEXT, relief="flat", bd=0,
+                                     font=("Menlo", 10), width=28,
+                                     highlightthickness=1,
+                                     highlightbackground=BORDER,
+                                     highlightcolor=ACCENT)
+                    msg_e.pack(side=tk.LEFT, ipady=3)
+                    rw_ref["params"]["message"] = msg_v
+
+                elif cmd_key == CMD_COM_RECEIVE:
+                    # Channel selector
+                    tk.Label(frame, text="CH", bg=bg, fg=TEXT_DIM,
+                             font=FONT_SMALL).pack(side=tk.LEFT, padx=(0, 4))
+                    ch_v = tk.StringVar(value=COM_CHANNEL_NAMES[step_data.get("channel", 0)])
+                    ch_cb = ttk.Combobox(frame, values=COM_CHANNEL_NAMES,
+                                         textvariable=ch_v,
+                                         state="readonly", width=6, font=FONT_LABEL)
+                    ch_cb.pack(side=tk.LEFT, padx=(0, 10))
+                    rw_ref["params"]["channel_var"] = ch_v
+                    # Timeout field
+                    tk.Label(frame, text="TIMEOUT ms", bg=bg, fg=TEXT_DIM,
+                             font=FONT_SMALL).pack(side=tk.LEFT, padx=(0, 4))
+                    to_v = tk.StringVar(value=str(step_data.get("timeout_ms", 1000)))
+                    to_e = tk.Entry(frame, textvariable=to_v, bg=SURFACE2, fg=TEXT,
+                                    insertbackground=TEXT, relief="flat", bd=0,
+                                    font=("Menlo", 10), width=7,
+                                    highlightthickness=1,
+                                    highlightbackground=BORDER,
+                                    highlightcolor=ACCENT)
+                    to_e.pack(side=tk.LEFT, ipady=3)
+                    rw_ref["params"]["timeout_ms"] = to_v
 
                 # CMD_DELAY has no extra params — delay_ms field is enough
 
@@ -1258,6 +1321,20 @@ class SerialConnectionApp:
                 elif cmd == CMD_SET_ADC_STATE:
                     try:
                         step["enable"] = bool(p["enable"].get())
+                    except (ValueError, KeyError):
+                        pass
+                elif cmd == CMD_COM_SEND:
+                    try:
+                        ch_name = p["channel_var"].get()
+                        step["channel"] = COM_CHANNEL_NAMES.index(ch_name)
+                        step["message"] = p["message"].get()
+                    except (ValueError, KeyError):
+                        pass
+                elif cmd == CMD_COM_RECEIVE:
+                    try:
+                        ch_name = p["channel_var"].get()
+                        step["channel"] = COM_CHANNEL_NAMES.index(ch_name)
+                        step["timeout_ms"] = int(p["timeout_ms"].get())
                     except (ValueError, KeyError):
                         pass
 
@@ -1844,7 +1921,9 @@ class SerialConnectionApp:
                                 lambda ch=channels, t=ts:
                                     self._handle_adc_telemetry(ch, t))
                     elif hv in PIO_UART_HANDSHAKE_VALUES:
-                        # PIO UART channel data — route to the Comms tab
+                        # PIO UART data — put on queue for dispatcher receive
+                        # steps, AND route to Comms tab for display.
+                        self._response_queue.put(frame)
                         self.root.after(0,
                             lambda f=frame: self._route_pio_packet(f))
                     else:
