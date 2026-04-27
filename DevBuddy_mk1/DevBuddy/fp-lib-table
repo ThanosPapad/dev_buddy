@@ -4,4 +4,5 @@
   (lib (name "AOTA-B201610S3R3-101-T")(type "KiCad")(uri "/Users/thanos/Desktop/General/dev_buddy/DevBuddy_mk1/AOTA-B201610S3R3-101-T")(options "")(descr ""))
   (lib (name "USB-C_Vertical")(type "KiCad")(uri "/Users/thanos/Desktop/General/dev_buddy/DevBuddy_mk1/USB-C-Vertical/footprints.pretty")(options "")(descr ""))
   (lib (name "footprints")(type "KiCad")(uri "/Users/thanos/Desktop/General/dev_buddy/DevBuddy_mk1/Button/footprints.pretty")(options "")(descr ""))
+  (lib (name "footprints1")(type "KiCad")(uri "/Users/thanos/Desktop/General/dev_buddy/DevBuddy_mk1/TPS22965/footprints.pretty")(options "")(descr ""))
 )

@@ -27,10 +27,11 @@ Should be able to be used for the starting point of any custom testing rig
 There are more screenshots in the folder showcasing the app
 
 ### Things that need to be done
-* Hardware and Software for the variable voltage channels control
+* Software (I2C)for the variable voltage channels control
 * The ability to record sessions of measuremnts, propably saved as CSV files
 * The ability to choose analog channels and view the measurements in a graph would be quite cool as well
 * The schematic should progressing quicker
 * Need to figure out how the external channels will work, and If external I2C is needed as well
+* Add ability for actions from external interrupts, that means one or two pins accessible to the user
 
 More updates to come soon!

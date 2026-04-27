@@ -5,4 +5,5 @@
   (lib (name "AOTA-B201610S3R3-101-T_lib")(type "Legacy")(uri "/Users/thanos/Desktop/General/dev_buddy/DevBuddy_mk1/AOTA-B201610S3R3-101-T/AOTA-B201610S3R3-101-T.lib")(options "")(descr ""))
   (lib (name "USB-C_Vertical")(type "KiCad")(uri "/Users/thanos/Desktop/General/dev_buddy/DevBuddy_mk1/USB-C-Vertical/2026-03-19_20-51-16.kicad_sym")(options "")(descr ""))
   (lib (name "2026-03-20_00-47-50")(type "KiCad")(uri "/Users/thanos/Desktop/General/dev_buddy/DevBuddy_mk1/Button/2026-03-20_00-47-50.kicad_sym")(options "")(descr ""))
+  (lib (name "2026-04-26_23-03-09")(type "KiCad")(uri "/Users/thanos/Desktop/General/dev_buddy/DevBuddy_mk1/TPS22965/2026-04-26_23-03-09.kicad_sym")(options "")(descr ""))
 )
