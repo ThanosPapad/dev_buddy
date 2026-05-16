@@ -2129,6 +2129,16 @@
 	)
 	(wire
 		(pts
+			(xy 62.23 160.02) (xy 68.58 160.02)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "265b63fd-aad2-4f14-9513-47849ecca615")
+	)
+	(wire
+		(pts
 			(xy 361.95 85.09) (xy 361.95 87.63)
 		)
 		(stroke
@@ -2969,6 +2979,16 @@
 	)
 	(wire
 		(pts
+			(xy 62.23 156.21) (xy 68.58 156.21)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c7e56e94-177f-4aa1-86df-f9ab5091da49")
+	)
+	(wire
+		(pts
 			(xy 88.9 106.68) (xy 88.9 97.79)
 		)
 		(stroke
@@ -3388,7 +3408,7 @@
 		(uuid "1fad2556-768a-423c-a736-aafd228a1481")
 	)
 	(label "ADC_R1_Hi"
-		(at 68.58 161.29 0)
+		(at 68.58 160.02 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -3528,7 +3548,7 @@
 		(uuid "765a45a9-bdc8-4513-80ce-6225d2ec4a6c")
 	)
 	(label "ADC_R1_Low"
-		(at 68.58 157.48 0)
+		(at 68.58 156.21 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -3827,6 +3847,28 @@
 		)
 		(uuid "ff78220b-8a5b-4464-8649-781fec6b5c29")
 	)
+	(global_label "VCC_CurSense_Hi"
+		(shape input)
+		(at 62.23 160.02 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "13dde695-b338-402a-a7da-0455941e8599")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 42.9767 160.02 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
 	(global_label "ACV_Vol_Out"
 		(shape input)
 		(at 166.37 53.34 180)
@@ -3906,6 +3948,28 @@
 		(uuid "29d4679f-155d-45bc-98d3-56d4da6ae062")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 72.1868 59.69 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "VCC_CurSense_Low"
+		(shape input)
+		(at 62.23 156.21 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "2ebb4523-6fe5-494b-967f-96e855e3b37e")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 41.4044 156.21 0)
 			(effects
 				(font
 					(size 1.27 1.27)

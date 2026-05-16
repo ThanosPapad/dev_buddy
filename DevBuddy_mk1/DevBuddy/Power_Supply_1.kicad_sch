@@ -10438,7 +10438,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Fuse:Fuse_1206_3216Metric"
 			(at 134.62 182.118 90)
 			(effects
 				(font
@@ -10458,6 +10458,15 @@
 		)
 		(property "Description" "Ferrite bead, small symbol"
 			(at 134.62 180.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Field5" "C710518"
+			(at 134.62 180.34 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -12943,7 +12952,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Fuse:Fuse_1206_3216Metric"
 			(at 351.79 182.118 90)
 			(effects
 				(font
@@ -18840,7 +18849,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Fuse:Fuse_1206_3216Metric"
 			(at 171.45 251.968 90)
 			(effects
 				(font
