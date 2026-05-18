@@ -5,14 +5,14 @@
 	(layer "F.Cu")
 	(tags "TPS55289RYQR ")
 	(property "Reference" "REF**"
-		(at 0 0 0)
+		(at -2.75 -2.25 0)
 		(unlocked yes)
 		(layer "F.SilkS")
 		(uuid "ec47304d-819e-45d8-b161-f412f2be59e9")
 		(effects
 			(font
-				(size 1 1)
-				(thickness 0.15)
+				(size 0.5 0.5)
+				(thickness 0.08)
 			)
 		)
 	)
@@ -408,18 +408,6 @@
 		)
 		(layer "F.Fab")
 		(uuid "59823040-d289-4ad1-958f-9dd406678be4")
-	)
-	(fp_text user "Designator247"
-		(at -3.251195 -3.07341 0)
-		(unlocked yes)
-		(layer "F.SilkS")
-		(uuid "2bd98965-26ba-44fc-b1dc-745f41589580")
-		(effects
-			(font
-				(size 1 1)
-				(thickness 0.15)
-			)
-		)
 	)
 	(fp_text user "${REFERENCE}"
 		(at 0 0 0)
