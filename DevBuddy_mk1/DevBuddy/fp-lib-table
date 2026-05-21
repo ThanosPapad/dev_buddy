@@ -5,4 +5,5 @@
   (lib (name "USB-C_Vertical")(type "KiCad")(uri "/Users/thanos/Desktop/General/dev_buddy/DevBuddy_mk1/USB-C-Vertical/footprints.pretty")(options "")(descr ""))
   (lib (name "footprints")(type "KiCad")(uri "/Users/thanos/Desktop/General/dev_buddy/DevBuddy_mk1/Button/footprints.pretty")(options "")(descr ""))
   (lib (name "footprints1")(type "KiCad")(uri "/Users/thanos/Desktop/General/dev_buddy/DevBuddy_mk1/TPS22965/footprints.pretty")(options "")(descr ""))
+  (lib (name "usb_micro_b")(type "KiCad")(uri "/Users/thanos/Desktop/General/dev_buddy/DevBuddy_mk1/usb_micro_b")(options "")(descr ""))
 )
