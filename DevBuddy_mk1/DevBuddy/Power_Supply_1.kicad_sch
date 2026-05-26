@@ -6772,7 +6772,7 @@
 		)
 		(uuid "2b5d9803-3811-4b77-b619-0bf6b0ef4639")
 	)
-	(label "buck_fb"
+	(label "buck_fb2"
 		(at 387.35 189.23 0)
 		(effects
 			(font
@@ -6792,7 +6792,7 @@
 		)
 		(uuid "4c48d591-960f-4f8a-9004-69d18fbeb86d")
 	)
-	(label "buck_fb"
+	(label "buck_fb1"
 		(at 207.01 259.08 0)
 		(effects
 			(font
@@ -6802,7 +6802,7 @@
 		)
 		(uuid "7fdfeb33-fccd-4fad-9407-81a2bcafbbfc")
 	)
-	(label "buck_fb"
+	(label "buck_fb2"
 		(at 276.86 190.5 0)
 		(effects
 			(font
@@ -6812,7 +6812,7 @@
 		)
 		(uuid "e0f8b175-a17b-4016-bec3-0f725dc467d4")
 	)
-	(label "buck_fb"
+	(label "buck_fb1"
 		(at 96.52 260.35 0)
 		(effects
 			(font

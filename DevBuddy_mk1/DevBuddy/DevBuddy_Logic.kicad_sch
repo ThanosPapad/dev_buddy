@@ -4115,16 +4115,6 @@
 	)
 	(wire
 		(pts
-			(xy 152.4 129.54) (xy 156.21 129.54)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "1a832ea5-0a2c-4539-8f4d-dba71d9a0386")
-	)
-	(wire
-		(pts
 			(xy 86.36 139.7) (xy 71.12 139.7)
 		)
 		(stroke
@@ -4475,6 +4465,16 @@
 	)
 	(wire
 		(pts
+			(xy 96.52 177.8) (xy 101.6 177.8)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "474eb6bc-54e7-4aee-b252-06e502cb6f4b")
+	)
+	(wire
+		(pts
 			(xy 88.9 111.76) (xy 95.25 111.76)
 		)
 		(stroke
@@ -4492,6 +4492,16 @@
 			(type default)
 		)
 		(uuid "492e92b9-5a43-4ddf-8851-beacc62c03ff")
+	)
+	(wire
+		(pts
+			(xy 96.52 175.26) (xy 101.6 175.26)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4cba4900-4872-41dc-a45c-0d4982549d08")
 	)
 	(wire
 		(pts
@@ -4532,16 +4542,6 @@
 			(type default)
 		)
 		(uuid "57944ca9-f450-4ca7-b4f0-1a445804d1e0")
-	)
-	(wire
-		(pts
-			(xy 152.4 127) (xy 156.21 127)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "6046134d-593d-4428-96f7-901c19406c6f")
 	)
 	(wire
 		(pts
@@ -4635,16 +4635,6 @@
 	)
 	(wire
 		(pts
-			(xy 152.4 132.08) (xy 156.21 132.08)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "7665ba97-9460-4245-8a68-129f91df04b9")
-	)
-	(wire
-		(pts
 			(xy 139.7 73.66) (xy 139.7 67.31)
 		)
 		(stroke
@@ -4672,6 +4662,16 @@
 			(type default)
 		)
 		(uuid "7e1364f7-8357-4df7-8e86-50127cd9909c")
+	)
+	(wire
+		(pts
+			(xy 96.52 180.34) (xy 101.6 180.34)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7f6f6418-1a61-40ed-a7b0-3863944e9036")
 	)
 	(wire
 		(pts
@@ -5939,22 +5939,22 @@
 	)
 	(global_label "MUX_S2"
 		(shape input)
-		(at 156.21 132.08 0)
+		(at 96.52 180.34 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left)
+			(justify right)
 		)
 		(uuid "3c5739fe-34da-4b57-83ce-a2f4cc12aab2")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 166.5732 132.08 0)
+			(at 86.1568 180.34 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 				(hide yes)
 			)
 		)
@@ -6203,22 +6203,22 @@
 	)
 	(global_label "MUX_S1"
 		(shape input)
-		(at 156.21 129.54 0)
+		(at 96.52 177.8 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left)
+			(justify right)
 		)
 		(uuid "adc8d3b8-b7f2-4a18-b190-aab3a06dec89")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 166.5732 129.54 0)
+			(at 86.1568 177.8 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 				(hide yes)
 			)
 		)
@@ -6357,22 +6357,22 @@
 	)
 	(global_label "MUX_S0"
 		(shape input)
-		(at 156.21 127 0)
+		(at 96.52 175.26 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left)
+			(justify right)
 		)
 		(uuid "e7526696-591f-4bd9-8231-7ec81b15f2aa")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 166.5732 127 0)
+			(at 86.1568 175.26 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 				(hide yes)
 			)
 		)
